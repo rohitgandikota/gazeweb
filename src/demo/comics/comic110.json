@@ -1,0 +1,36 @@
+{
+  "name": "comic110",
+  "width": 1536,
+  "height": 256,
+  "panel_widths": [
+    256,
+    256,
+    256,
+    256,
+    256,
+    256
+  ],
+  "panel_boundaries_px": [
+    0,
+    256,
+    512,
+    768,
+    1024,
+    1280,
+    1536
+  ],
+  "gap": 6,
+  "embeds": {
+    "file": "comic110.embeds.bin",
+    "dims": [
+      384,
+      2048
+    ],
+    "dtype": "float32",
+    "grid_thw": [
+      1,
+      16,
+      96
+    ]
+  }
+}

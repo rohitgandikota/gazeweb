@@ -81,6 +81,7 @@ gtag('js', new Date()); gtag('config', 'G-FD12LWN557');
 <!-- TODO: update GitHub repo link -->
 <a href="https://github.com/rohitgandikota/gaze-heads" class="d-inline-block p-3 align-top" target="_blank"><img height="100" width="78" src="images/code-thumb.png" style="border:1px solid; margin: 0 38px;" alt="Github code thumbnail" data-nothumb=""><br>Source Code<br>Github</a>
 <a href="https://huggingface.co/datasets/baulab/openai-comic-strips" class="d-inline-block p-3 align-top" target="_blank"><img height="100" width="140" src="images/data-thumb.png" style="border:1px solid; margin: 0 38px;" alt="Dataset thumbnail" data-nothumb=""><br>Comic Strips<br>Dataset</a>
+<a href="#demo" class="d-inline-block p-3 align-top"><img height="100" width="140" src="images/demo-thumb.png" style="border:1px solid; margin: 0 38px;" alt="Interactive demo thumbnail" data-nothumb=""><br>Interactive<br>Demo</a>
 </p>
 
 <div class="card" style="max-width: 1020px;">
@@ -129,6 +130,49 @@ this lever, and we find the same mechanism across model sizes and architectures.
   content instead: <b>changing where the gaze heads look changes what the model says</b>.
   </figcaption>
 </figure>
+
+  <h2 id="demo">Try it yourself: steer the gaze heads live in your browser</h2>
+  <div class="card" style="max-width: 1020px; margin: 10px auto;">
+    <div class="card-block" id="gazedemo-body">
+      <p>This demo runs <b>Qwen3-VL-2B entirely in your browser.</b>Pick a comic, press Generate, and <b>hover a
+        panel to redirect the top-10 gaze heads onto it while the model is
+        writing</b>: the narration pivots to whatever your cursor is over. The
+        intervention is the same single attention-bias edit studied in the paper.</p>
+      <p id="gazedemo-note" style="color:#666; font-size: 14px;">First use
+      downloads ~1.2&nbsp;GB of model weights from Hugging Face (cached for
+      later visits). Requires a WebGPU-capable browser &mdash; recent Chrome or Edge
+      on a desktop/laptop works best.</p>
+      <p style="text-align:center;"><button id="gazedemo-start"
+        style="padding: 10px 26px; font-size: 17px; border-radius: 8px;
+        border: 1px solid #1a4f9c; background: #1a4f9c; color: white;
+        cursor: pointer;">&#9654;&nbsp; Try the demo</button></p>
+    </div>
+  </div>
+  <script>
+  document.getElementById('gazedemo-start').addEventListener('click', async function () {
+    var btn = this;
+    var note = document.getElementById('gazedemo-note');
+    if (!navigator.gpu) {
+      btn.style.display = 'none';
+      note.innerHTML = '<b>This browser does not support WebGPU.</b> Please use a ' +
+        'recent version of Chrome or Edge on a desktop or laptop to run the demo.';
+      return;
+    }
+    btn.disabled = true;
+    btn.textContent = 'Starting\u2026';
+    try {
+      var mod = await import('./demo/demo.js');
+      btn.style.display = 'none';
+      note.style.display = 'none';
+      await mod.start(document.getElementById('gazedemo-body'));
+    } catch (e) {
+      btn.disabled = false;
+      btn.textContent = '\u25B6  Try the demo';
+      note.textContent = 'The demo failed to start: ' + e.message;
+      console.error(e);
+    }
+  });
+  </script>
 
   <h2>How does a VLM look at an image?</h2>
   <p>A modern VLM starts life as a language model and is fine-tuned to accept images
