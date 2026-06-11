@@ -128,8 +128,10 @@ function bboxToTokenPositions([x0, y0, x1, y1], { t, h, w }, [W, H], imgStart) {
 // ---------------------------------------------------------------------------
 const STYLES = `
 .gazedemo { text-align: left; }
-.gazedemo .gd-strip-wrap { position: relative; cursor: crosshair; border: 1px solid #ccc;
-  border-radius: 6px; overflow: hidden; user-select: none; }
+.gazedemo .gd-strip-wrap { position: relative; border: 1px solid #ccc;
+  border-radius: 6px; overflow: hidden; user-select: none;
+  /* magnifying-glass cursor: "inspect this panel" (hotspot = lens center) */
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32'%3E%3Ccircle cx='13' cy='13' r='8' fill='white' fill-opacity='.3' stroke='%231d7a3a' stroke-width='2.5'/%3E%3Cline x1='19.5' y1='19.5' x2='28' y2='28' stroke='%23222' stroke-width='4' stroke-linecap='round'/%3E%3Cline x1='8.5' y1='10' x2='11' y2='7.5' stroke='white' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E") 13 13, crosshair; }
 .gazedemo .gd-strip { display: block; width: 100%; }
 .gazedemo .gd-hl { position: absolute; top: 0; height: 100%; display: none;
   background: rgba(46,204,113,.25); border-left: 2px solid #2ecc71;
