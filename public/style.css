@@ -4,8 +4,12 @@ body, td, th {
 h2 {
   margin-top: 3ex;
 }
-/* Seafoam sage: Gaze Heads */
-.color-primary-0 { color: #2E5243 }
+/* Soft lilac: Gaze Heads */
+.color-primary-0 { color: #5E3A8C }
+
+a {
+  color: #5E3A8C;
+}
 .color-primary-1 { color: #199099 }
 .color-primary-2 { color: #969518 }
 .color-primary-3 { color: #1AA16A }
@@ -16,7 +20,7 @@ h2 {
   margin-bottom: 1.5rem;
   color: #000000;
   text-align: center;
-  background-color: #CDE5D7;
+  background-color: #E3D7F0;
 }
 
 .nd-pageheader a, .nd-pageheader a.likelink {
@@ -26,13 +30,13 @@ h2 {
 .nd-pagefooter {
   margin-top: 1.5rem;
   padding: 1rem;
-  color: #2E5243;
+  color: #000000;
   text-align: center;
-  background-color: #CDE5D7;
+  background-color: #E3D7F0;
 }
 
 .nd-pagefooter a {
-  color: #1F6B4A;
+  color: #5E3A8C;
 }
 
 .nd-pageheader .container {
