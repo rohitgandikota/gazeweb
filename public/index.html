@@ -134,20 +134,20 @@ this lever, and we find the same mechanism across model sizes and architectures.
   <h2 id="demo">Try it yourself: steer the gaze heads live in your browser</h2>
   <div class="card" style="max-width: 1020px; margin: 10px auto;">
     <div class="card-block" id="gazedemo-body">
-      <p>This demo runs <b>Qwen3-VL-2B entirely in your browser.</b> The
-        intervention is the same single attention-bias edit studied in the
-        paper, applied to the top-10 gaze heads live as the model writes.</p>
-      <p><b>To start, click "Start demo" below. Once the model loads, press the
-        green "Start generating" button and keep hovering over the comic.</b>
-        As you hover a different panel, watch the gaze heads
-        push the model to talk about the panel under your cursor &mdash; you
-        can re-steer <b>in the middle of generation</b>, as often as you like.
-        The streamed text is tinted by the panel that was steering it; move
-        the cursor off the strip to let the model look wherever it wants.</p>
-      <p id="gazedemo-note" style="color:#666; font-size: 14px;"><b>Requires a
+      <p>This demo runs <b>Qwen3-VL-2B entirely in your browser</b>, with the
+        paper's attention edit applied to its top-10 gaze heads live as it
+        writes. Your cursor becomes the model's gaze.</p>
+      <ol style="margin-bottom: 12px;">
+        <li>Click <b>Start demo</b> (the first load fetches ~1.2&nbsp;GB of
+          model weights; cached for later visits).</li>
+        <li>Press the green <b>Start generating</b> button.</li>
+        <li><b>Hover over any panel</b> and the model describes that panel.
+          Move your cursor mid-sentence to re-steer it; the streamed text is
+          tinted by the panel steering it.</li>
+      </ol>
+      <p id="gazedemo-note" style="color:#666; font-size: 14px;">Requires a
       WebGPU-capable browser: recent Chrome or Edge on a desktop/laptop works
-      best.</b> First use downloads ~1.2&nbsp;GB of model weights from Hugging
-      Face (cached for later visits).</p>
+      best.</p>
       <p style="text-align:center;"><button id="gazedemo-start"
         style="padding: 10px 26px; font-size: 17px; border-radius: 8px;
         border: 1px solid #1a4f9c; background: #1a4f9c; color: white;
