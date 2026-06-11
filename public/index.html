@@ -1,15 +1,15 @@
 <!doctype html>
 <html lang="en">
 <head>
-<title>Unified Concept Editing in Diffusion Models</title>
+<title>Gaze Heads: How VLMs Look at What They Describe</title>
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<meta name="description" content="Addressing bias, copyright, and offensive content in diffusion models by directly calculating parameter changes." />
-<meta property="og:title" content="Unified Concept Editing in Diffusion Models" />
-<meta property="og:description" content="Addressing bias, copyright, and offensive content in diffusion models by directly calculating parameter changes." />
+<meta name="description" content="A small set of attention heads in vision-language models tracks the image region being described, and redirecting them steers what the model says." />
+<meta property="og:title" content="Gaze Heads: How VLMs Look at What They Describe" />
+<meta property="og:description" content="A small set of attention heads in vision-language models tracks the image region being described, and redirecting them steers what the model says." />
 <meta property="og:type" content="website" />
-<meta name="twitter:card" content="summary" /> 
-<meta name="twitter:title" content="Unified Concept Editing in Diffusion Models" />
-<meta name="twitter:description" content="Addressing bias, copyright, and offensive content in diffusion models by directly calculating parameter changes." />
+<meta name="twitter:card" content="summary" />
+<meta name="twitter:title" content="Gaze Heads: How VLMs Look at What They Describe" />
+<meta name="twitter:description" content="A small set of attention heads in vision-language models tracks the image region being described, and redirecting them steers what the model says." />
 <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16.png">
@@ -41,6 +41,24 @@
 :target {
   background-color: yellow;
 }
+.qualbox {
+  border: 1px solid #999;
+  border-radius: 6px;
+  background: #fafafa;
+  padding: 14px 18px;
+  margin: 10px auto 4px auto;
+  max-width: 800px;
+  text-align: left;
+  font-size: 0.95em;
+}
+.qualbox .prompt {
+  font-style: italic;
+  color: #444;
+}
+.qualbox table td {
+  padding: 1px 8px 1px 0;
+  vertical-align: top;
+}
 </style>
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-FD12LWN557"></script>
 <script>
@@ -54,35 +72,21 @@ gtag('js', new Date()); gtag('config', 'G-FD12LWN557');
 <div class="nd-pageheader">
  <div class="container">
  <h1 class="lead">
- Unified
- <nobr class="widenobr">Concept Editing</nobr>
- in 
- <nobr class="widenobr">Diffusion Models</nobr>
+ Gaze Heads:
+ <nobr class="widenobr">How VLMs Look</nobr>
+ at
+ <nobr class="widenobr">What They Describe</nobr>
  </h1>
 <address>
   <nobr><a href="https://rohitgandikota.github.io/" target="_blank"
-  >Rohit Gandikota</a><sup>1</sup>,</nobr>
-  <nobr><a href="https://orgadhadas.github.io/" target="_blank"
-  >Hadas Orgad</a><sup>2</sup>,</nobr>
-  <nobr><a href="https://belinkov.com/" target="_blank"
-  >Yonatan Belinkov</a><sup>2</sup>,</nobr>
-  <nobr><a href="https://joaanna.github.io/" target="_blank"
-  >Joanna Materzy&#324;ska</a><sup>3</sup>,</nobr>
+  >Rohit Gandikota</a>,</nobr>
   <nobr><a href="https://baulab.info/" target="_blank"
-  >David Bau</a><sup>1</sup></nobr>
+  >David Bau</a></nobr>
  <br>
-  <nobr><sup>1</sup><a href="https://khoury.northeastern.edu/" target="_blank"
-  >Northeastern University</a>,</nobr>
-  <nobr><sup>2</sup><a href="https://cs.technion.ac.il/" target="_blank"
-  >Technion - IIT</a></nobr>;
-  <nobr><sup>3</sup><a href="https://www.csail.mit.edu/" target="_blank"
-  >MIT CSAIL</a></nobr>
+  <nobr><a href="https://khoury.northeastern.edu/" target="_blank"
+  >Northeastern University</a></nobr>
 
 </address>
- <center>
-  Winter Conference on Applications of Computer Vision
-  <a href="https://wacv2024.thecvf.com">(WACV 2024)</a>
-</center>
  </div>
 </div><!-- end nd-pageheader -->
 
@@ -90,137 +94,260 @@ gtag('js', new Date()); gtag('config', 'G-FD12LWN557');
 <div class="row justify-content-center text-center">
 
 <p>
-<a href="https://arxiv.org/pdf/2308.14761.pdf" class="d-inline-block p-3 align-top" target="_blank"><img height="100" width="78" src="images/paper-thumb.png" style="border:1px solid; margin: 0 38px;" alt="ArXiv Preprint thumbnail" data-nothumb=""><br>ArXiv<br>Preprint</a>
-<a href="https://github.com/rohitgandikota/unified-concept-editing" class="d-inline-block p-3 align-top" target="_blank"><img height="100" width="78" src="images/code-thumb.png" style="border:1px solid; margin: 0 38px;" alt="Github code thumbnail" data-nothumb=""><br>Source Code<br>Github</a>
-<!-- <a href="https://unified.baulab.info/weights/uce_models/" class="d-inline-block p-3 align-top" target="_blank"><img height="100" width="78" src="images/data-thumb.png" style="border:1px solid; margin: 0 38px;" alt="Data thumbnail" data-nothumb=""><br>Fine-Tuned<br>Model  Weights</a> -->
-<!-- <a href="https://huggingface.co/spaces/baulab/Erasing-Concepts-In-Diffusion" class="d-inline-block p-3 align-bottom" target="_blank"><img height="78" width="104" src="images/demo3x4-thumb.png" style="border:1px solid" alt="Huggingface demo thumbnail" data-nothumb=""><br>Huggingface<br>Demo</a> -->
+<!-- TODO: update arXiv link once the preprint is live -->
+<a href="https://arxiv.org/abs/XXXX.XXXXX" class="d-inline-block p-3 align-top" target="_blank"><img height="100" width="78" src="images/paper-thumb.png" style="border:1px solid; margin: 0 38px;" alt="ArXiv Preprint thumbnail" data-nothumb=""><br>ArXiv<br>Preprint</a>
+<!-- TODO: update GitHub repo link -->
+<a href="https://github.com/rohitgandikota/gaze-heads" class="d-inline-block p-3 align-top" target="_blank"><img height="100" width="78" src="images/code-thumb.png" style="border:1px solid; margin: 0 38px;" alt="Github code thumbnail" data-nothumb=""><br>Source Code<br>Github</a>
 </p>
 
 <div class="card" style="max-width: 1020px;">
 <div class="card-block">
-<h3>How to fix multiple issues with diffusion model weights?</h3>
+<h3>How does a vision-language model look at what it describes?</h3>
 <p>
-<p>
-Text-to-image models suffer from various safety issues that may limit their suitability for deployment.
-Previous methods have separately addressed individual issues of bias, copyright, and offensive content in text-to-image models. However, in the real world, all of these issues appear simultaneously in the same model.
-
+When we describe what we see, our gaze follows our words: we fixate on each
+object as we mention it. Vision-language models (VLMs) describe images fluently,
+but what happens inside the network as the words move from one part of the image
+to the next is far from obvious. Does anything inside a VLM behave like gaze?
 </p>
 <p>
-In this paper, we present a method that tackles those diverse issues with a single approach. 
-  Our method, Unified Concept Editing (UCE), edits the model without training using <b>a closed-form solution conditioned on cross attention outputs</b>, and scales seamlessly to concurrent edits on text-conditional diffusion models.
-UCE enables direct editing of concepts based on phrases and attributes without use of new training data, supporting rapid iteration.
-Key advantages versus finetuning approaches include: efficient scaling of editing multiple concepts, precise concept changes through direct modification of model weights, avoidance of interference with protected or unrelated concepts, and rapid iteration from fast closed-form editing
+In this paper, we find that it does, in a remarkably narrow channel of the network.
+A small set of attention heads, which we call <b>gaze heads</b>, tracks the image
+region the model is currently describing, and <b>redirecting their attention steers
+the model to describe any region we choose</b> — with a single attention-mask edit,
+at inference time, with no retraining. Fewer than 9% of the model's heads carry
+this lever, and we find the same mechanism across model sizes and architectures.
 </p>
 </div><!--card-block-->
 </div><!--card-->
 
 </div><!--row-->
-  
+
 <div class="row">
 <div class="col">
-  
+
 <figure class="center_image" style="margin-top: 30px">
-  <center><img src="images/paper/intro.png" style="width:100%; max-width:800px"></center>
-  <figcaption>In a unified way, UCE can debias, erase and moderate concepts in diffusion models. Unlike previous model editing methods that address each application individually, our method can simultaneously edit multiple concepts with minimal interference
+  <center><img src="images/paper/gaze/vqa_strip.png" style="width:100%; max-width:1000px"></center>
+  <div class="qualbox">
+    <p class="prompt">"Read each of the panels and tell me. What is the main action happening in this particular comic panel? Just output the answer in few words."</p>
+    <p style="margin-bottom:6px"><span style="color:#a33">Baseline (no steering):</span> Cat discovers treasure map</p>
+    <p style="margin-bottom:2px"><span style="color:#1a4f9c">Steered responses when gaze is redirected to:</span></p>
+    <table>
+      <tr><td style="color:#1a4f9c">Panel 1:</td><td>Cat discovers treasure map.</td></tr>
+      <tr><td style="color:#1a4f9c">Panel 2:</td><td>Cat digs, digs, digs, digs, digs, digs.</td></tr>
+      <tr><td style="color:#1a4f9c">Panel 3:</td><td>Cat explores underwater.</td></tr>
+      <tr><td style="color:#1a4f9c">Panel 4:</td><td>Cat explores jungle.</td></tr>
+      <tr><td style="color:#1a4f9c">Panel 5:</td><td>Cat discovers gem.</td></tr>
+      <tr><td style="color:#1a4f9c">Panel 6:</td><td>Cat explores space.</td></tr>
+    </table>
+  </div>
+  <figcaption>One question, six different answers. The model is asked the exact same
+  question in every condition. Without steering, it answers from the first panel.
+  Redirecting the gaze heads to a chosen panel makes the answer describe that panel's
+  content instead: <b>changing where the gaze heads look changes what the model says</b>.
   </figcaption>
 </figure>
 
-  <h2> Why debias/erase/moderate concepts from diffusion models? </h2>
-  <p>Since large-scale models like Stable Diffusion are trained on massive datasets, they often learn concerning capabilities like generating nudity 
-    or imitating styles/content without permission. This has created risks: Stable Diffusion can be used 
-    to <a href="https://www.washingtonpost.com/technology/2023/02/13/ai-porn-deepfakes-women-consent/">generate nonconsensual deepfake porn</a>, 
-    <a href="https://www.washingtonpost.com/comics/2023/02/14/ai-in-illustration/">mimic artists' work</a>, 
-    <a href="https://www.theverge.com/2023/2/6/23587393/ai-art-copyright-lawsuit-getty-images-stable-diffusion">reproduce copyrighted/trademarked content</a>, and
-    <a href="https://www.bloomberg.com/graphics/2023-generative-ai-bias/">amplify stereotypes about race and gender</a>.
-   Such issues pose serious challenges for institutions releasing models. </p>
-  <p>   
-  There are methods that address these concerns separately, but they do not scale well to editing multiple concepts together. 
-    We propose a closed-form solution that can address these challenges in a unified way at scale, editing multiple concepts concurrently with minimal interference.
-  </p>
-  
-<h2> How to edit concepts simultaneously in diffusion models? </h2>
-  <figure class="center_image" style="margin-top: 30px">
-    <center><img src="images/paper/method.png" style="width:100%; max-width:600px"></center>
-    <figcaption> We update the weights of cross attention linear layers in closed-form by conditioning its outputs for the concepts to edit and preserve. Our method, UCE, does not require any training data collection or any gradient descent. UCE can debias, erase, and moderate concepts together in a single edit and scales to editing multiple concepts while minimizing interference with unedited concepts.
-    </figcaption>
-  </figure>
-  <p>We edit the cross attention weights by conditioning new target output for the concept embeddings to edit and preserve the previoud outputs for concepts to preserve. We minimize the loss shown in the figure above through this closed-form update:
-  </p>
-  <center><img src="images/paper/uce_closed.png" style="width:500px;padding-bottom:10px;"></center>
-  <p> Our method generalizes previous state-of-the-art model editing methods like <a href="https://arxiv.org/pdf/2303.08084.pdf">TIME</a> and 
-    <a href="https://openreview.net/pdf?id=MkbcAHIYgyS">MEMIT</a>. Our method can also be generalised to editing any linear projection.</p>
-<h2> Erasing an artistic style</h2>
-  <p>Models like Stable Diffusion can mimic <a href="https://proximacentaurib.notion.site/About-Image-Synthesis-Style-Studies-4dcbd554f4b0403d802dc5b26fb3b8e9">the styles of more than 1500 artists</a>. Not all artists are excited about their art being mimicked by genrative models and wish to be opted-out of these models' vocubulary.
-  Recent works have been working on <a href="https://spawning.ai">filtering the training data</a> to accomodate the opt-out requests from individuals. Eventhough such filtering would exclude the artists from future models that are trained on the filtered dataset, model editing may still be needed for certain artists that aren't fully addressed. We propose using UCE that is scalable, fast, and displays minimal interference with other artists. 
-  To erase style, we use the name of the artist and steer them towards general prompts like "art" or "".</p>
-  <figure class="center_image" style="margin-top: 30px">
-    <center><img src="images/paper/style1.png" style="width:100%; max-width:800px"></center>
-    <figcaption> Erasing 1 artist. On left, we show the original vs edited for the intended erasure. On the right, we show the interference with unerased artists. We find that our method efficiently erases while having the least inteference.
-    </figcaption>
-  </figure>
+  <h2>How does a VLM look at an image?</h2>
+  <p>A modern VLM starts life as a language model and is fine-tuned to accept images
+  alongside text. The image is sliced into a grid of small square patches, and each patch
+  becomes one <b>image token</b> that sits in the same sequence as the text tokens. The model
+  routes information between these tokens using <b>attention heads</b>: small units, many per
+  layer, that each decide which other tokens to pull information from at each step of
+  generation. The model we study most, Qwen3-VL-8B, has 1,152 of them.</p>
+  <p>With over a thousand heads all free to look anywhere, it's not obvious how the model
+  decides which part of the image to ground its words in. To study this, we use <b>comic strips</b>
+  as a controlled testbed. A six-panel strip lays narrative order out spatially: panels go
+  left to right, and the model has to attend to each panel in sequence to describe the story.
+  That gives us unambiguous ground truth for where the model <i>should</i> be looking at every
+  point in its answer, something a free-form photograph cannot give us.</p>
+  <p><i>So which of those 1,152 heads move their attention along with the words — and do
+  those heads merely follow the description, or do they control it?</i></p>
 
+  <h2>Where in the network does visual reading order live?</h2>
+  <p>Before looking for individual heads, we first ask a coarser question: is the model's
+  notion of "reading order" spread throughout the network, or concentrated somewhere?</p>
+  <p>Concretely, we overlay each panel with a random letter so the model's answer is a single
+  letter, and run two prompts on the same strip: a normal one asking for the letter on the
+  <i>k</i>-th panel, and one that prepends <i>"Read the comic in reverse"</i>. Subtracting the
+  internal activations of the two runs gives us, at every layer, a direction that means
+  "read this strip backwards". We then add that direction back in at one layer at a time
+  during a normal forward pass and watch whether the model's answer flips to the
+  reverse-reading answer.</p>
   <figure class="center_image" style="margin-top: 30px">
-    <center><img src="images/paper/style2.png" style="width:100%; max-width:800px"></center>
-    <figcaption> Erasing 5 artists at a time. On left, we show the original vs edited for the intended erasure. On the right, we show the interference with unerased artists. We find that our method efficiently erases while having the least inteference.
+    <center><img src="images/paper/gaze/layer_flip.png" style="width:100%; max-width:750px"></center>
+    <figcaption>Adding the "read-in-reverse" direction at one layer at a time. Only layers
+    20&ndash;28 flip the model's answer from the first panel (green) to the reverse-reading
+    target (red); the same direction does nothing anywhere else in the network. <b>Visual
+    reading order lives in a narrow band of middle layers.</b>
     </figcaption>
   </figure>
+  <p>There is a twist that tells us this can't be the whole story. We repeated the same
+  construction for all 720 possible panel orderings, and only <i>reverse</i> produces strong
+  steering. Yet the model has no trouble answering a question about any arbitrary panel.
+  So whatever mechanism handles "look at panel 4" cannot be a single global direction —
+  it must live in something that can re-route flexibly. The natural suspects are the
+  attention heads.</p>
 
+  <h2>Gaze Score — which heads track the panel being described?</h2>
+  <p>We score every one of the 1,152 heads on a simple property: when the question changes
+  which panel it asks about, does this head's attention move to that panel?</p>
+  <p>Concretely, we ask the model about each panel in turn — <i>"What is happening in the
+  k-th panel from the left?"</i> — and record how much attention each head pays to each panel's
+  image tokens. Across the six questions this gives every head a 6&times;6 matrix: rows are
+  the queried panel, columns are the attended panel. A head that perfectly tracks the
+  question puts all its mass on the diagonal, and our <b>gaze score</b> is simply the average
+  of that diagonal. Finding gaze heads is cheap: ask about each panel, record which heads
+  shift, sort. No training, no labels, a handful of forward passes.</p>
   <figure class="center_image" style="margin-top: 30px">
-    <center><img src="images/paper/style3.png" style="width:100%; max-width:800px"></center>
-    <figcaption> Erasing 10 artists at a time. On left, we show the original vs edited for the intended erasure. On the right, we show the interference with unerased artists. We find that our method efficiently erases while having the least inteference.
+    <center><img src="images/paper/gaze/gaze_scores.png" style="width:100%; max-width:1000px"></center>
+    <figcaption>(a)&nbsp;The 6&times;6 attention matrices of the three top-scoring heads (top row)
+    are sharply diagonal — they look at panel <i>k</i> when asked about panel <i>k</i> — while
+    low-scoring heads (bottom row) attend diffusely no matter what is asked. (b)&nbsp;During
+    free-form narration with no panel query at all, the top-100 gaze heads sweep their attention
+    panel by panel in a clean staircase aligned with the generated text, while 100 random
+    non-gaze heads show no structure. <b>Gaze heads track the panel being described, even when
+    nobody tells the model where to look.</b>
     </figcaption>
   </figure>
+  <p>Two things surprised us here. First, the top-scoring heads all concentrate in layers
+  20&ndash;28 — exactly the band our reading-order probe found, even though the search ranged
+  over the whole network. Second, the heads we found using controlled questions keep tracking
+  during free generation: prompted to simply describe the strip, their attention sits on
+  panel 1 while the model narrates panel 1, then jumps to panel 2 within a few tokens of the
+  narration moving on. Asked to narrate in reverse, the staircase mirrors.</p>
 
+  <h2>Can we point the gaze somewhere else?</h2>
+  <p>The staircase shows that gaze heads <i>track</i> what the model describes, but tracking is
+  correlational. The causal question is: if we force these heads to look elsewhere, does the
+  model describe that region instead?</p>
+  <p>Concretely, we reach into the attention computation of just the top-100 gaze heads —
+  fewer than 9% of the model — and add a bias that boosts their attention onto a chosen
+  target panel's image tokens and suppresses the other panels. Attention to text is left
+  untouched, every other head is left untouched, and no weights change. If the gaze heads
+  are the channel through which a visual region gets grounded into language, the model's
+  answer should follow them to the target panel.</p>
   <figure class="center_image" style="margin-top: 30px">
-    <center><img src="images/paper/style4.png" style="width:100%; max-width:800px"></center>
-    <figcaption> Erasing 50 artists at a time. On left, we show the original vs edited for the intended erasure. On the right, we show the interference with unerased artists. We find that our method efficiently erases while having the least inteference.
+    <center><img src="images/paper/gaze/redirection_bars.png" style="width:100%; max-width:900px"></center>
+    <figcaption>Redirection accuracy over 3,000 strip-target pairs, judged by an LLM that picks
+    which of the six panels the steered answer describes (chance is 16.7%). Redirecting the
+    top-100 gaze heads steers the answer to the chosen panel 83.1% of the time on visual
+    question answering (a) and 79.4% on panel-by-panel narration (b). The same intervention on
+    random non-gaze heads fails to redirect, and applying it to all 1,152 heads destroys
+    generation entirely. <b>The steering effect is specific to the gaze head set.</b>
     </figcaption>
   </figure>
-<h2> Debiasing a profession across gender and race</h2>
-  <p> Previous debiasing methods address only dual attributed biases, however, attributes like race are multi-faceted. We propose a multi-faceted debiasing formulation that can be scaled for multiple concepts. Our method has strong debiasing results, improving the race and gender representation in diffusion models.
-  <center><img src="images/paper/debias_equation.png" style="width:500px;padding-bottom:10px;"></center>
-    <p>This formulation allows UCE to address multi-attribute biases like race. We show some quantitative results of our method displaying improved race and gender diversity.</p>
-    <figure class="center_image" style="margin-top: 30px">
-    <center><img src="images/paper/gender1.png" style="width:100%; max-width:800px"></center>
-    <figcaption> Our method improves gender representation for professions in diffusion models.
-    </figcaption>
-  </figure>
-  
-  <figure class="center_image" style="margin-top: 30px">
-    <center><img src="images/paper/gender2.png" style="width:100%; max-width:800px"></center>
-    <figcaption> Our method improves gender representation for professions in diffusion models.
-    </figcaption>
-  </figure>
-  
-  <figure class="center_image" style="margin-top: 30px">
-    <center><img src="images/paper/gender3.png" style="width:100%; max-width:800px"></center>
-    <figcaption> Our method improves gender representation for professions in diffusion models.
-    </figcaption>
-  </figure>
+  <p>We also ran the identical intervention through two head sets from prior work —
+  <a href="https://arxiv.org/abs/2510.02790">Image Heads</a> and
+  <a href="https://arxiv.org/abs/2503.06287">Localization Heads</a>, which select heads by how
+  much, or how concentrated, their image attention is in a single pass. Both redirect well
+  above chance but below gaze heads. The difference traces back to what each score measures:
+  the gaze score rewards heads that <i>re-route as the queried region changes</i>, and it is that
+  temporal signal that picks out the heads most worth steering.</p>
 
-   
- <figure class="center_image" style="margin-top: 30px">
-    <center><img src="images/paper/race1.png" style="width:100%; max-width:800px"></center>
-    <figcaption> Our method improves race representation for professions in diffusion models.
-    </figcaption>
-  </figure>
-
-   
- <figure class="center_image" style="margin-top: 30px">
-    <center><img src="images/paper/race2.png" style="width:100%; max-width:800px"></center>
-    <figcaption> Our method improves race representation for professions in diffusion models.
-    </figcaption>
-  </figure>
-
-<h2> Moderating an unsafe concept</h2>
-  <p>We test our method on moderating unsafe concepts like <i>"nudity"</i>. We compare our method with <a href="https://erasing.baulab.info">ESD-u and ESD-x</a>. We find that our method has similar performance as ESD-x when erasing a single concept, but our method shows minimal interference with other concepts in the model. 
-  We also see that moderating multiple unsafe concepts like <i>"harm, violence, child abuse, blood, nudity"</i>, our method shows a stronger moderation effect on the model as seen in the figure below.</p>
+  <h2>Can we move the gaze mid-sentence?</h2>
+  <p>Pointing the gaze heads at one fixed panel steers a whole answer. A stronger test of
+  control is to grab the lever <i>during</i> generation: switch the target panel every 50 tokens,
+  in a scrambled order that never starts at panel 1 and never follows the default
+  left-to-right scan, and see whether the narration follows.</p>
   <figure class="center_image" style="margin-top: 30px">
-    <center><img src="images/paper/nudity_bar.png" style="width:100%; max-width:800px"></center>
-    <figcaption> We show the percentage reduction in unsafe nudity samples compared to Original SD as classified by <a href="https://github.com/notAI-tech/NudeNet">Nudenet</a>. We find that our method has a superior performance when moderating multiple unsafe concepts.
+    <center><img src="images/paper/gaze/dynamic_strip.png" style="width:100%; max-width:1000px"></center>
+    <center><img src="images/paper/gaze/dynamic_trajectory.png" style="width:100%; max-width:850px; margin-top:8px"></center>
+    <div class="qualbox">
+      <p style="margin-bottom:6px"><b>Generated narration under dynamic gaze switching</b>
+      <span style="color:#777">(schedule: <span style="color:#a33">P2</span> &rarr;
+      <span style="color:#1a4f9c">P4</span> &rarr; <span style="color:#b06000">P3</span> &rarr;
+      <span style="color:#1c7a1c">P5</span> &rarr; <span style="color:#6a1c9c">P1</span> &rarr;
+      <span style="color:#7a4a1c">P6</span>, switching every 50 tokens)</span></p>
+      <p style="font-size:0.92em; margin-bottom:0">
+      <span style="color:#a33">1. Two friends hike through forest, backpacks in tow, exploring nature's wonders. Trees tower as they trek, adventure awaiting beyond the woods' embrace. 2. Forest path winds through lush greenery, friends hike with backpacks and trees.</span>
+      <span style="color:#1a4f9c">Nature's mystery awaits as they explore, hidden treasures hidden in shadows. 3. Children explore jungle, flashlight illuminates path. Hidden cave looms ahead, mystery beckons as vines dangle, adventure awaits in darkness. 4. Kids discover hidden cave</span><span style="color:#b06000">, river flows nearby. Nature's beauty surrounds them, adventure awaits as they cross streams, exploring wild landscapes. 5. Kids cross river, bridge spans rocky path. Nature's beauty surrounds them, adventure awaits as they explore, crossing streams, finding hidden</span>
+      <span style="color:#1c7a1c">treasures. 6. Kids explore cave, glowing gems shine. Adventure ends as they discover hidden treasures, cave's secrets revealed in glowing light.</span>
+      <span style="color:#6a1c9c">7. Kids explore attic, treasure chest awaits. Hidden secrets await, mystery unfolds as they uncover hidden treasures, childhood dreams come alive. 8. Kids explore attic, treasure chest awaits. Hidden secrets await, mystery unfolds as they uncover</span>
+      <span style="color:#7a4a1c">hidden treasures, childhood dreams come alive. 9. Kids explore field, flowers bloom. Joyful moments unfold, nature's beauty surrounds them, friendship blooms with every step.</span>
+      </p>
+    </div>
+    <figcaption>A single dynamic-switching run. Top: the six-panel strip. Middle: gaze-head
+    attention during generation, with the target switched every 50 tokens. Bottom: the
+    narration, colored by which panel the gaze heads were steered toward. The model wraps up
+    its current description and moves to the new panel within a few tokens of each switch.
+    Notice that it keeps its default "1, 2, 3..." numbering while the <i>content</i> follows the
+    gaze heads — <b>the textual structure and the visual grounding are functionally separate
+    mechanisms</b>, and we are only steering the second.
     </figcaption>
   </figure>
-  
+  <p>Across strips, the order the model actually describes tracks the steering schedule with
+  a Spearman correlation of 0.87 for the gaze heads, while random non-gaze heads come out
+  slightly <i>anti</i>-correlated: with no working lever, the model falls back to its default
+  left-to-right scan, which the scrambled schedule is built to oppose.</p>
+
+  <h2>How many heads does it take?</h2>
+  <p>Every result so far redirects a fixed set of 100 heads. Is that number special?</p>
+  <figure class="center_image" style="margin-top: 30px">
+    <center><img src="images/paper/gaze/topk_sweep.png" style="width:100%; max-width:700px"></center>
+    <figcaption>Steering accuracy as a function of how many top-ranked gaze heads are
+    redirected. Accuracy climbs from 36% with 5 heads to a peak of 83.1% at 100 heads, then
+    falls as the intervention starts overriding heads the model needs for fluent generation.
+    The random control stays at chance throughout. <b>The gaze function is concentrated in
+    roughly 100 heads: enough to seize control of visual grounding, few enough that the rest
+    of the model keeps working.</b>
+    </figcaption>
+  </figure>
+  <p>The effect is sharply tuned rather than monotonic. Redirect too few heads and you get
+  only partial control; redirect too many and you trample heads that have nothing to do with
+  gaze, breaking generation entirely. The lever has a size.</p>
+
+  <h2>Do gaze heads work beyond comics?</h2>
+  <p>Comics gave us clean panel boundaries to discover the heads, but natural images have no
+  panels. Do the same heads still ground attention spatially when no explicit regions exist?</p>
+  <figure class="center_image" style="margin-top: 30px">
+    <center><img src="images/paper/gaze/natural_gaze.png" style="width:100%; max-width:1000px"></center>
+    <figcaption>Gaze-head attention while the model freely describes a photograph. Each heatmap
+    averages the gaze heads' attention over the output tokens where the model describes one
+    object: the easel (upper left), the fig plant (center), the globe (upper right), and so on.
+    The attention concentrates on the spatial region of whichever object is being described —
+    <b>the heads found with comic panels track objects in natural scenes too.</b>
+    </figcaption>
+  </figure>
+  <figure class="center_image" style="margin-top: 30px">
+    <center><img src="images/paper/gaze/natural_steer.png" style="width:100%; max-width:1000px"></center>
+    <figcaption>Steering also transfers. Asked to list all objects in the scene, the unsteered
+    model answers across the whole image (left). Concentrating gaze-head attention on a chosen
+    region restricts the answer to objects inside that region (middle, right).
+    </figcaption>
+  </figure>
+  <p>To quantify this, we steered the gaze heads to object bounding boxes on COCO images and
+  asked the model what is in that region: gaze redirection more than doubles the accuracy of
+  the non-gaze control in every object-size class. The intervention is strongest on larger
+  objects, whose boxes cover enough image tokens for the bias to bite, and weakens on small
+  ones.</p>
+
+  <h2>Is this one model's quirk?</h2>
+  <p>Everything above is one model, Qwen3-VL-8B. We ran the same discovery-and-steering
+  pipeline, unchanged, on four Qwen3-VL sizes from 2B to 32B parameters and on six other VLM
+  families with different vision encoders, tokenizers, and training recipes.</p>
+  <p>The mechanism recurs. Every Qwen3-VL size yields a steerable gaze head set, and so do
+  Qwen2-VL, Ovis, and InternVL — peak redirection between 60% and 83% across all of them.
+  But it is not universal: the LLaVA family and Bunny show no comparably steerable head set.
+  One pattern consistent with the split, which we offer as a hypothesis rather than a
+  confirmed cause, is whether the vision encoder is trained together with the language model.
+  All the families where gaze heads work fine-tune their encoder on the VLM task; all the
+  families where they don't keep a frozen encoder behind a thin adapter. Bunny is a
+  particularly suggestive case: it freezes the very same vision backbone that Ovis fine-tunes,
+  and yields 8.3% peak steering accuracy versus Ovis's 68.7%.</p>
+
+  <h2>Limitations</h2>
+  <p>The frozen-encoder exception is exactly that — an observed pattern, not an explanation —
+  and confirming why those families lack gaze heads would need controlled training experiments
+  we leave to future work. On natural images the lever weakens for small objects, whose
+  bounding boxes cover too few image tokens for the attention bias to act on. And while we
+  show gaze heads control which region gets described, we have not yet asked whether the same
+  heads mediate other visually grounded behaviors, such as spatial reasoning or hallucination.</p>
+
+  <p style="margin-top: 24px">For the full experiments, quantitative comparisons against prior
+  head sets, and results across all ten models, see
+  <!-- TODO: update arXiv link -->
+  <a href="https://arxiv.org/abs/XXXX.XXXXX">our paper</a>.</p>
+
 <h2>How to cite</h2>
 
 <p>The paper can be cited as follows.
@@ -230,18 +357,18 @@ Key advantages versus finetuning approaches include: efficient scaling of editin
 <h3 class="card-header">bibliography</h3>
 <div class="card-block">
 <p style="text-indent: -3em; margin-left: 3em;" class="card-text clickselect">
-Rohit Gandikota, Hadas Orgad, Yonatan Belinkov, Joanna Materzy&#324;ska, David Bau. "<em>Unified Concept Editing in Diffusion Models.</em>" in Proceedings of the IEEE/CVF Winter Conference on Applications of Computer Vision (WACV) 2024.</nobr>
+Rohit Gandikota, David Bau. "<em>Gaze Heads: How VLMs Look at What They Describe.</em>"
+arXiv preprint (2026).
 </p>
 </div>
 <h3 class="card-header">bibtex</h3>
 <div class="card-block">
 <pre class="card-text clickselect">
-@inproceedings{gandikota2024unified,
-  title={Unified Concept Editing in Diffusion Models},
-  author={Gandikota, Rohit and Orgad, Hadas and Belinkov, Yonatan and Materzy{\'n}ska, Joanna and Bau, David},
-  booktitle={Proceedings of the IEEE/CVF Winter Conference on Applications of Computer Vision},
-  year={2024},
-  note={arXiv:2308.14761}
+@article{gandikota2026gazeheads,
+  title={Gaze Heads: How VLMs Look at What They Describe},
+  author={Rohit Gandikota and David Bau},
+  journal={arXiv preprint arXiv:XXXX.XXXXX},
+  year={2026}
 }
 </pre>
 </div>
@@ -271,4 +398,3 @@ $(document).on('click', '.clickselect', function(ev) {
 });
 </script>
 </html>
-
