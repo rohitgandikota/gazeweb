@@ -152,15 +152,33 @@ const STYLES = `
 .gazedemo .gd-status { color: #555; font-size: 13px; min-height: 18px; margin: 8px 0; }
 .gazedemo .gd-perf { font-size: 12px; color: #777; margin-top: 6px; }
 .gazedemo .gd-hint { font-size: 13px; color: #555; margin-top: 6px; }
-.gazedemo progress { width: 240px; height: 10px; vertical-align: middle; }
+.gazedemo.loading .gd-status, .gazedemo.loading .gd-hint,
+.gazedemo.loading .gd-controls, .gazedemo.loading .gd-out,
+.gazedemo.loading .gd-perf { display: none; }
+.gazedemo .gd-loading { position: absolute; inset: 0; display: flex;
+  align-items: center; justify-content: center;
+  background: rgba(255,255,255,.55); }
+.gazedemo .gd-loading-card { background: #fff; border: 1px solid #ccc;
+  border-radius: 8px; box-shadow: 0 2px 12px rgba(0,0,0,.18);
+  padding: 14px 22px; text-align: center; max-width: 86%; }
+.gazedemo .gd-loading-msg { font-size: 14px; color: #333; margin-bottom: 8px; }
+.gazedemo .gd-progress progress { width: min(380px, 60vw); height: 14px;
+  vertical-align: middle; accent-color: #1d7a3a; }
+.gazedemo .gd-progress-label { font-size: 12px; color: #555; margin-left: 8px; }
 `;
 
 const TEMPLATE = `
-<div class="gazedemo">
+<div class="gazedemo loading">
   <div class="gd-status">Starting…</div>
   <div class="gd-strip-wrap">
     <img class="gd-strip" alt="comic strip" />
     <div class="gd-hl"></div>
+    <div class="gd-loading">
+      <div class="gd-loading-card">
+        <div class="gd-loading-msg">Preparing the demo&hellip;</div>
+        <div class="gd-progress"><progress max="100"></progress><span class="gd-progress-label"></span></div>
+      </div>
+    </div>
   </div>
   <div class="gd-hint">Hover a panel to steer the gaze heads onto it —
     <b>including while the model is writing</b>. Move off the strip to release.
@@ -189,6 +207,14 @@ export async function start(container) {
   container.appendChild(mount);
   const $ = (cls) => mount.querySelector('.' + cls);
   const status = (t) => { $('gd-status').textContent = t; };
+  // During the initial load an overlay card covers the strip; route progress
+  // messages there while it exists, to the status line afterwards.
+  const msg = (t) => { const m = mount.querySelector('.gd-loading-msg'); if (m) m.textContent = t; else status(t); };
+
+  // Show the real layout immediately: the comic renders right away and the
+  // model download happens behind the overlay instead of a broken shell.
+  $('gd-strip').src = asset(`comics/${COMICS[0].name}.png`);
+  $('gd-comic').innerHTML = COMICS.map((c) => `<option value="${c.name}">${c.label}</option>`).join('');
 
   const state = {
     processor: null, model: null, gaze: new GazeController(), config: null,
@@ -200,25 +226,36 @@ export async function start(container) {
 
   // ---- model load (starts immediately) -------------------------------------
   try {
-    status('loading tokenizer…');
+    msg('Preparing the demo…');
     state.processor = await AutoProcessor.from_pretrained(MODEL_ID);
     state.config = await (await fetch(
       `https://huggingface.co/${MODEL_ID}/resolve/main/config.json`)).json();
 
-    let shownPct = -1;
+    const dlFiles = new Map();
+    const bar = $('gd-progress');
+    const updateBar = () => {
+      let loaded = 0, total = 0;
+      for (const f of dlFiles.values()) { loaded += f.loaded ?? 0; total += f.total ?? 0; }
+      if (!total) return;
+      bar.querySelector('progress').value = loaded / total * 100;
+      bar.querySelector('.gd-progress-label').textContent =
+        `${(loaded / 1e9).toFixed(2)} / ${(total / 1e9).toFixed(2)} GB`;
+      msg('Downloading the model — one-time, cached for your next visit');
+    };
     state.model = await AutoModelForImageTextToText.from_pretrained(MODEL_ID, {
       dtype: { embed_tokens: 'q4f16', vision_encoder: 'q4f16', decoder_model_merged: 'q4f16' },
       device: 'webgpu',
       progress_callback: (p) => {
-        if (p.status === 'progress' && p.file?.includes('decoder')) {
-          const pct = Math.floor(p.progress ?? 0);
-          if (pct !== shownPct) {
-            shownPct = pct;
-            status(`downloading model — ${pct}% of ~1.2 GB (one-time; cached for next visit)`);
-          }
+        if (p.status === 'progress' && p.file && p.total) {
+          dlFiles.set(p.file, p);
+          updateBar();
         }
       },
     });
+    // Download done — switch the bar to indeterminate for the warm-up phase.
+    bar.querySelector('progress').removeAttribute('value');
+    bar.querySelector('.gd-progress-label').textContent = '';
+    msg('Warming up the model…');
 
     const decoder = Object.values(state.model.sessions).find(
       (s) => s.inputNames?.includes?.('gaze_sign'));
@@ -231,8 +268,7 @@ export async function start(container) {
     state.model.encode_image = async () =>
       new Tensor('float32', state.embeds, state.embedsDims);
 
-    const sel = $('gd-comic');
-    sel.innerHTML = COMICS.map((c) => `<option value="${c.name}">${c.label}</option>`).join('');
+    const sel = $('gd-comic'); // options were populated at mount
     sel.onchange = async () => {
       if (state.generating) state.stopFlag = true;
       sel.disabled = true; $('gd-gen').disabled = true;
@@ -241,17 +277,23 @@ export async function start(container) {
     };
 
     await loadComic(COMICS[0].name);
+    // Everything is ready: drop the overlay and reveal the controls.
+    mount.querySelector('.gd-loading')?.remove();
+    mount.querySelector('.gazedemo').classList.remove('loading');
     sel.disabled = false;
     $('gd-gen').disabled = false;
   } catch (err) {
-    status('Demo failed to start: ' + err.message);
+    $('gd-progress')?.remove();
+    msg('The demo failed to start: ' + err.message);
+    const m = mount.querySelector('.gd-loading-msg');
+    if (m) m.style.color = '#a33333';
     console.error(err);
     return;
   }
 
   // ---- per-comic preparation ------------------------------------------------
   async function loadComic(name) {
-    status('preparing comic…');
+    msg('Preparing the comic…');
     state.meta = await (await fetch(asset(`comics/${name}.json`))).json();
     const buf = await (await fetch(asset(`comics/${state.meta.embeds.file}`))).arrayBuffer();
     state.embeds = new Float32Array(buf);
@@ -284,7 +326,7 @@ export async function start(container) {
     $('gd-out').textContent = '';
     $('gd-perf').textContent = '';
 
-    status('prefilling (one-time per comic)…');
+    msg('Warming up the model (one-time per comic)…');
     await snapshotPromptKV();
     status('ready — press "Start generating", then hover panels to steer');
   }
