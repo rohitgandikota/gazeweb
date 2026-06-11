@@ -95,8 +95,8 @@ to the next is far from obvious. Does anything inside a VLM behave like gaze?
 In this paper, we find that it does, in a remarkably narrow channel of the network.
 A small set of attention heads, which we call <b>gaze heads</b>, tracks the image
 region the model is currently describing, and <b>redirecting their attention steers
-the model to describe any region we choose</b> — with a single attention-mask edit,
-at inference time, with no retraining. Fewer than 9% of the model's heads carry
+the model to describe any region we choose</b>, with a single attention-mask edit
+at inference time and no retraining. Fewer than 9% of the model's heads carry
 this lever, and we find the same mechanism across model sizes and architectures.
 </p>
 </div><!--card-block-->
@@ -142,7 +142,7 @@ this lever, and we find the same mechanism across model sizes and architectures.
   left to right, and the model has to attend to each panel in sequence to describe the story.
   That gives us unambiguous ground truth for where the model <i>should</i> be looking at every
   point in its answer, something a free-form photograph cannot give us.</p>
-  <p><i>So which of those 1,152 heads move their attention along with the words — and do
+  <p><i>So which of those 1,152 heads move their attention along with the words? And do
   those heads merely follow the description, or do they control it?</i></p>
 
   <h2>Where in the network does visual reading order live?</h2>
@@ -166,15 +166,15 @@ this lever, and we find the same mechanism across model sizes and architectures.
   <p>There is a twist that tells us this can't be the whole story. We repeated the same
   construction for all 720 possible panel orderings, and only <i>reverse</i> produces strong
   steering. Yet the model has no trouble answering a question about any arbitrary panel.
-  So whatever mechanism handles "look at panel 4" cannot be a single global direction —
+  So whatever mechanism handles "look at panel 4" cannot be a single global direction;
   it must live in something that can re-route flexibly. The natural suspects are the
   attention heads.</p>
 
-  <h2>Gaze Score — which heads track the panel being described?</h2>
+  <h2>Gaze Score: which heads track the panel being described?</h2>
   <p>We score every one of the 1,152 heads on a simple property: when the question changes
   which panel it asks about, does this head's attention move to that panel?</p>
-  <p>Concretely, we ask the model about each panel in turn — <i>"What is happening in the
-  k-th panel from the left?"</i> — and record how much attention each head pays to each panel's
+  <p>Concretely, we ask the model about each panel in turn (<i>"What is happening in the
+  k-th panel from the left?"</i>) and record how much attention each head pays to each panel's
   image tokens. Across the six questions this gives every head a 6&times;6 matrix: rows are
   the queried panel, columns are the attended panel. A head that perfectly tracks the
   question puts all its mass on the diagonal, and our <b>gaze score</b> is simply the average
@@ -183,8 +183,8 @@ this lever, and we find the same mechanism across model sizes and architectures.
   <figure class="center_image" style="margin-top: 30px">
     <center><img src="images/paper/gaze/gaze_scores.png" style="width:100%; max-width:1000px"></center>
     <figcaption>(a)&nbsp;The 6&times;6 attention matrices of the three top-scoring heads (top row)
-    are sharply diagonal — they look at panel <i>k</i> when asked about panel <i>k</i> — while
-    low-scoring heads (bottom row) attend diffusely no matter what is asked. (b)&nbsp;During
+    are sharply diagonal: they look at panel <i>k</i> when asked about panel <i>k</i>. Low-scoring
+    heads (bottom row) attend diffusely no matter what is asked. (b)&nbsp;During
     free-form narration with no panel query at all, the top-100 gaze heads sweep their attention
     panel by panel in a clean staircase aligned with the generated text, while 100 random
     non-gaze heads show no structure. <b>Gaze heads track the panel being described, even when
@@ -192,7 +192,7 @@ this lever, and we find the same mechanism across model sizes and architectures.
     </figcaption>
   </figure>
   <p>Two things surprised us here. First, the top-scoring heads all concentrate in layers
-  20&ndash;28 — exactly the band our reading-order probe found, even though the search ranged
+  20&ndash;28, exactly the band our reading-order probe found, even though the search ranged
   over the whole network. Second, the heads we found using controlled questions keep tracking
   during free generation: prompted to simply describe the strip, their attention sits on
   panel 1 while the model narrates panel 1, then jumps to panel 2 within a few tokens of the
@@ -202,8 +202,8 @@ this lever, and we find the same mechanism across model sizes and architectures.
   <p>The staircase shows that gaze heads <i>track</i> what the model describes, but tracking is
   correlational. The causal question is: if we force these heads to look elsewhere, does the
   model describe that region instead?</p>
-  <p>Concretely, we reach into the attention computation of just the top-100 gaze heads —
-  fewer than 9% of the model — and add a bias that boosts their attention onto a chosen
+  <p>Concretely, we reach into the attention computation of just the top-100 gaze heads,
+  fewer than 9% of the model, and add a bias that boosts their attention onto a chosen
   target panel's image tokens and suppresses the other panels. Attention to text is left
   untouched, every other head is left untouched, and no weights change. If the gaze heads
   are the channel through which a visual region gets grounded into language, the model's
@@ -218,7 +218,7 @@ this lever, and we find the same mechanism across model sizes and architectures.
     generation entirely. <b>The steering effect is specific to the gaze head set.</b>
     </figcaption>
   </figure>
-  <p>We also ran the identical intervention through two head sets from prior work —
+  <p>We also ran the identical intervention through two head sets from prior work:
   <a href="https://arxiv.org/abs/2510.02790">Image Heads</a> and
   <a href="https://arxiv.org/abs/2503.06287">Localization Heads</a>, which select heads by how
   much, or how concentrated, their image attention is in a single pass. Both redirect well
@@ -255,7 +255,7 @@ this lever, and we find the same mechanism across model sizes and architectures.
     narration, colored by which panel the gaze heads were steered toward. The model wraps up
     its current description and moves to the new panel within a few tokens of each switch.
     Notice that it keeps its default "1, 2, 3..." numbering while the <i>content</i> follows the
-    gaze heads — <b>the textual structure and the visual grounding are functionally separate
+    gaze heads: <b>the textual structure and the visual grounding are functionally separate
     mechanisms</b>, and we are only steering the second.
     </figcaption>
   </figure>
@@ -288,7 +288,7 @@ this lever, and we find the same mechanism across model sizes and architectures.
     <figcaption>Gaze-head attention while the model freely describes a photograph. Each heatmap
     averages the gaze heads' attention over the output tokens where the model describes one
     object: the easel (upper left), the fig plant (center), the globe (upper right), and so on.
-    The attention concentrates on the spatial region of whichever object is being described —
+    The attention concentrates on the spatial region of whichever object is being described:
     <b>the heads found with comic panels track objects in natural scenes too.</b>
     </figcaption>
   </figure>
@@ -310,7 +310,7 @@ this lever, and we find the same mechanism across model sizes and architectures.
   pipeline, unchanged, on four Qwen3-VL sizes from 2B to 32B parameters and on six other VLM
   families with different vision encoders, tokenizers, and training recipes.</p>
   <p>The mechanism recurs. Every Qwen3-VL size yields a steerable gaze head set, and so do
-  Qwen2-VL, Ovis, and InternVL — peak redirection between 60% and 83% across all of them.
+  Qwen2-VL, Ovis, and InternVL, with peak redirection between 60% and 83% across all of them.
   But it is not universal: the LLaVA family and Bunny show no comparably steerable head set.
   One pattern consistent with the split, which we offer as a hypothesis rather than a
   confirmed cause, is whether the vision encoder is trained together with the language model.
@@ -320,7 +320,7 @@ this lever, and we find the same mechanism across model sizes and architectures.
   and yields 8.3% peak steering accuracy versus Ovis's 68.7%.</p>
 
   <h2>Limitations</h2>
-  <p>The frozen-encoder exception is exactly that — an observed pattern, not an explanation —
+  <p>The frozen-encoder exception is exactly that, an observed pattern rather than an explanation,
   and confirming why those families lack gaze heads would need controlled training experiments
   we leave to future work. On natural images the lever weakens for small objects, whose
   bounding boxes cover too few image tokens for the attention bias to act on. And while we

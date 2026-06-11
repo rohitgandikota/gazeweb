@@ -14,13 +14,13 @@ h2 {
 .nd-pageheader {
   padding: 2rem 15px;
   margin-bottom: 1.5rem;
-  color: #2E5243;
+  color: #000000;
   text-align: center;
   background-color: #CDE5D7;
 }
 
 .nd-pageheader a, .nd-pageheader a.likelink {
-  color: #1F6B4A;
+  color: #000000;
 }
 
 .nd-pagefooter {
