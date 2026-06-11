@@ -284,7 +284,7 @@ export async function start(container) {
 
     status('prefilling (one-time per comic)…');
     await snapshotPromptKV();
-    status(`ready — hover a panel, then press Generate (${state.promptLen} prompt tokens)`);
+    status('ready — hover panels to steer while the model writes');
   }
 
   // Prefill prompt[:-1] once; each Generate resumes from CPU copies of the KV.
@@ -421,4 +421,8 @@ export async function start(container) {
   $('gd-stop').onclick = () => { state.stopFlag = true; };
 
   window.__gazedemo = { state, setTargetPanel }; // console debugging hook
+
+  // The page button says "Start generating" — honor it: begin writing as
+  // soon as the model is ready, so the visitor only has to hover.
+  $('gd-gen').click();
 }

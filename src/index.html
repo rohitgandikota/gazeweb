@@ -134,28 +134,41 @@ this lever, and we find the same mechanism across model sizes and architectures.
   <h2 id="demo">Try it yourself: steer the gaze heads live in your browser</h2>
   <div class="card" style="max-width: 1020px; margin: 10px auto;">
     <div class="card-block" id="gazedemo-body">
-      <p>This demo runs <b>Qwen3-VL-2B entirely in your browser.</b>Pick a comic, press Generate, and <b>hover a
-        panel to redirect the top-10 gaze heads onto it while the model is
-        writing</b>: the narration pivots to whatever your cursor is over. The
-        intervention is the same single attention-bias edit studied in the paper.</p>
-      <p id="gazedemo-note" style="color:#666; font-size: 14px;">First use
-      downloads ~1.2&nbsp;GB of model weights from Hugging Face (cached for
-      later visits). Requires a WebGPU-capable browser &mdash; recent Chrome or Edge
-      on a desktop/laptop works best.</p>
+      <p>This demo runs <b>Qwen3-VL-2B entirely in your browser.</b> The
+        intervention is the same single attention-bias edit studied in the
+        paper, applied to the top-10 gaze heads live as the model writes.</p>
+      <p><b>To start, click "Start generating" below and keep hovering over
+        the comic.</b> As you hover a different panel, watch the gaze heads
+        push the model to talk about the panel under your cursor &mdash; you
+        can re-steer <b>in the middle of generation</b>, as often as you like.
+        The streamed text is tinted by the panel that was steering it; move
+        the cursor off the strip to let the model look wherever it wants.</p>
+      <p id="gazedemo-note" style="color:#666; font-size: 14px;"><b>Requires a
+      WebGPU-capable browser: recent Chrome or Edge on a desktop/laptop works
+      best.</b> First use downloads ~1.2&nbsp;GB of model weights from Hugging
+      Face (cached for later visits).</p>
       <p style="text-align:center;"><button id="gazedemo-start"
         style="padding: 10px 26px; font-size: 17px; border-radius: 8px;
         border: 1px solid #1a4f9c; background: #1a4f9c; color: white;
-        cursor: pointer;">&#9654;&nbsp; Try the demo</button></p>
+        cursor: pointer;">&#9654;&nbsp; Start generating</button></p>
     </div>
   </div>
   <script>
   document.getElementById('gazedemo-start').addEventListener('click', async function () {
     var btn = this;
     var note = document.getElementById('gazedemo-note');
+    // The requirement note (#gazedemo-note) stays visible at ALL times \u2014
+    // browsers can pass the navigator.gpu check and still stall later
+    // (observed on Safari), and the note is the user's only hint why.
+    var problem = function (msg) {
+      var p = document.createElement('p');
+      p.style.cssText = 'color:#a33; font-size: 14px;';
+      p.innerHTML = msg;
+      note.parentNode.insertBefore(p, note.nextSibling);
+    };
     if (!navigator.gpu) {
       btn.style.display = 'none';
-      note.innerHTML = '<b>This browser does not support WebGPU.</b> Please use a ' +
-        'recent version of Chrome or Edge on a desktop or laptop to run the demo.';
+      problem('<b>This browser does not support WebGPU</b>, so the demo cannot run here.');
       return;
     }
     btn.disabled = true;
@@ -163,12 +176,11 @@ this lever, and we find the same mechanism across model sizes and architectures.
     try {
       var mod = await import('./demo/demo.js');
       btn.style.display = 'none';
-      note.style.display = 'none';
       await mod.start(document.getElementById('gazedemo-body'));
     } catch (e) {
       btn.disabled = false;
-      btn.textContent = '\u25B6  Try the demo';
-      note.textContent = 'The demo failed to start: ' + e.message;
+      btn.textContent = '\u25B6  Start generating';
+      problem('The demo failed to start: ' + e.message);
       console.error(e);
     }
   });
