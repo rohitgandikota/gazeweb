@@ -130,12 +130,14 @@ const STYLES = `
 .gazedemo { text-align: left; }
 .gazedemo .gd-strip-wrap { position: relative; border: 1px solid #ccc;
   border-radius: 6px; overflow: hidden; user-select: none;
-  /* magnifying-glass cursor: "inspect this panel" (hotspot = lens center) */
-  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32'%3E%3Ccircle cx='13' cy='13' r='8' fill='white' fill-opacity='.3' stroke='%231d7a3a' stroke-width='2.5'/%3E%3Cline x1='19.5' y1='19.5' x2='28' y2='28' stroke='%23222' stroke-width='4' stroke-linecap='round'/%3E%3Cline x1='8.5' y1='10' x2='11' y2='7.5' stroke='white' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E") 13 13, crosshair; }
+  /* magnifying-glass cursor: "inspect this panel" (hotspot = lens center).
+     24px so it survives browser zoom (Chrome drops cursors scaled past 32px). */
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24'%3E%3Ccircle cx='10' cy='10' r='6' fill='white' fill-opacity='.3' stroke='%231d7a3a' stroke-width='2'/%3E%3Cline x1='14.5' y1='14.5' x2='21' y2='21' stroke='%23222' stroke-width='3' stroke-linecap='round'/%3E%3Cline x1='6.5' y1='7.5' x2='8.5' y2='5.5' stroke='white' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E") 10 10, crosshair; }
 .gazedemo .gd-strip { display: block; width: 100%; }
-.gazedemo .gd-hl { position: absolute; top: 0; height: 100%; display: none;
-  background: rgba(46,204,113,.25); border-left: 2px solid #2ecc71;
-  border-right: 2px solid #2ecc71; pointer-events: none; }
+.gazedemo .gd-hl { position: absolute; inset: 0; display: none;
+  /* spotlight: full-strip overlay; JS paints a gradient that dims everything
+     except a transparent window over the hovered panel */
+  pointer-events: none; }
 .gazedemo .gd-controls { margin: 12px 0; display: flex; gap: 10px; align-items: center;
   flex-wrap: wrap; }
 .gazedemo button { padding: 5px 14px; font-size: 14px; border-radius: 6px;
@@ -397,9 +399,12 @@ export async function start(container) {
     if (p !== state.currentPanel) setTargetPanel(p);
     const hl = $('gd-hl');
     if (p >= 0) {
+      const L = (b[p] / state.meta.width * 100).toFixed(3);
+      const R = (b[p + 1] / state.meta.width * 100).toFixed(3);
+      const dim = 'rgba(0,0,0,0.45)', clear = 'rgba(0,0,0,0)';
       hl.style.display = 'block';
-      hl.style.left = (b[p] / state.meta.width * 100) + '%';
-      hl.style.width = ((b[p + 1] - b[p]) / state.meta.width * 100) + '%';
+      hl.style.background = `linear-gradient(to right, ${dim} 0%, ${dim} ${L}%, ` +
+        `${clear} ${L}%, ${clear} ${R}%, ${dim} ${R}%, ${dim} 100%)`;
       // Back on the strip: cancel any pending hover-out stop.
       if (state.leaveTimer) { clearTimeout(state.leaveTimer); state.leaveTimer = null; }
       // Hovering a panel IS the start button (small delay = hover intent).
