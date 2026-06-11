@@ -180,14 +180,13 @@ const TEMPLATE = `
       </div>
     </div>
   </div>
-  <div class="gd-hint">Hover a panel to steer the gaze heads onto it —
-    <b>including while the model is writing</b>. Move off the strip to release.
-    Text is tinted by the panel that was steering it.</div>
+  <div class="gd-hint"><b>Hover a panel and the model starts writing about
+    it.</b> Slide to another panel to re-steer mid-sentence; move off the strip
+    to stop. Text is tinted by the panel that was steering it.</div>
   <div class="gd-controls">
     <select class="gd-comic" disabled></select>
-    <button class="gd-gen" disabled>Start generating</button>
+    <button class="gd-gen" disabled>Generate without steering</button>
     <button class="gd-stop" disabled>Stop</button>
-    <label style="font-size:14px"><input type="checkbox" class="gd-steer" checked /> steering</label>
     <span class="gd-badge">target: —</span>
   </div>
   <div class="gd-out"></div>
@@ -222,6 +221,7 @@ export async function start(container) {
     meta: null, image: null, embeds: null, embedsDims: null,
     kvSnapshot: null, CacheCtor: null,
     generating: false, stopFlag: false, currentPanel: -1,
+    ready: false, hoverArmed: true, hoverTimer: null, leaveTimer: null,
   };
 
   // ---- model load (starts immediately) -------------------------------------
@@ -293,6 +293,7 @@ export async function start(container) {
 
   // ---- per-comic preparation ------------------------------------------------
   async function loadComic(name) {
+    state.ready = false;
     msg('Preparing the comic…');
     state.meta = await (await fetch(asset(`comics/${name}.json`))).json();
     const buf = await (await fetch(asset(`comics/${state.meta.embeds.file}`))).arrayBuffer();
@@ -328,7 +329,9 @@ export async function start(container) {
 
     msg('Warming up the model (one-time per comic)…');
     await snapshotPromptKV();
-    status('ready — press "Start generating", then hover panels to steer');
+    state.ready = true;
+    state.hoverArmed = true;
+    status('ready — hover a comic panel and the model starts writing');
   }
 
   // Prefill prompt[:-1] once; each Generate resumes from CPU copies of the KV.
@@ -372,7 +375,7 @@ export async function start(container) {
   function setTargetPanel(p) {
     state.currentPanel = p;
     $('gd-badge').textContent = p >= 0 ? `target: panel ${p + 1}` : 'target: —';
-    if (p < 0 || !$('gd-steer').checked) { state.gaze.clear(); return; }
+    if (p < 0) { state.gaze.clear(); return; }
     const boost = state.panelPositions[p];
     const boostSet = new Set(boost);
     state.gaze.setTarget({
@@ -395,16 +398,44 @@ export async function start(container) {
       hl.style.display = 'block';
       hl.style.left = (b[p] / state.meta.width * 100) + '%';
       hl.style.width = ((b[p + 1] - b[p]) / state.meta.width * 100) + '%';
+      // Back on the strip: cancel any pending hover-out stop.
+      if (state.leaveTimer) { clearTimeout(state.leaveTimer); state.leaveTimer = null; }
+      // Hovering a panel IS the start button (small delay = hover intent).
+      if (state.ready && state.hoverArmed && !state.generating && !state.hoverTimer) {
+        state.hoverTimer = setTimeout(() => {
+          state.hoverTimer = null;
+          if (state.ready && state.hoverArmed && !state.generating && state.currentPanel >= 0) {
+            state.hoverArmed = false;
+            runGeneration();
+          }
+        }, 150);
+      }
     }
   });
   $('gd-strip-wrap').addEventListener('mouseleave', () => {
     $('gd-hl').style.display = 'none';
     setTargetPanel(-1);
+    if (state.hoverTimer) { clearTimeout(state.hoverTimer); state.hoverTimer = null; }
+    // Grace period so brushing past the strip edge doesn't kill the run.
+    if (!state.leaveTimer) {
+      state.leaveTimer = setTimeout(() => {
+        state.leaveTimer = null;
+        state.hoverArmed = true; // next hover starts a fresh run
+        if (state.generating) state.stopFlag = true;
+      }, 400);
+    }
   });
 
   // ---- generation -------------------------------------------------------------
-  $('gd-gen').onclick = async () => {
-    if (state.generating) return;
+  $('gd-gen').onclick = () => {
+    // Baseline: generate with no steering (hovering mid-run still re-steers).
+    setTargetPanel(-1);
+    state.hoverArmed = false; // don't let the same hover restart a new run
+    runGeneration();
+  };
+
+  async function runGeneration() {
+    if (state.generating || !state.ready) return;
     state.generating = true;
     state.stopFlag = false;
     $('gd-gen').disabled = true;
@@ -447,20 +478,20 @@ export async function start(container) {
         out.textContent = state.processor.batch_decode(
           outIds.slice(null, [state.promptLen, null]), { skip_special_tokens: true })[0];
       }
-      status('done — hover a different panel and press "Start generating" again');
+      status('finished — move off the strip, then hover a panel for a new run');
     } catch (err) {
       if (err.message !== '__stopped__') {
         status('generation failed: ' + err.message);
         console.error(err);
       } else {
-        status('stopped');
+        status('stopped — hover a panel to start a new run');
       }
     } finally {
       state.generating = false;
       $('gd-gen').disabled = false;
       $('gd-stop').disabled = true;
     }
-  };
+  }
 
   $('gd-stop').onclick = () => { state.stopFlag = true; };
 
