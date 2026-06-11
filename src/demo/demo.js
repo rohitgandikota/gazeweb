@@ -37,7 +37,7 @@ const COMICS = [
   { name: 'comic217', label: 'Dragon through the seasons' },
   { name: 'comic110', label: 'Dog earns cookies' },
   { name: 'comic281', label: 'Scientist at work' },
-  { name: 'comic1', label: 'Robot & creature' },
+  { name: 'comic4', label: "Cat's treasure hunt" },
 ];
 
 const asset = (p) => new URL(p, import.meta.url).href;
@@ -139,6 +139,8 @@ const STYLES = `
 .gazedemo button { padding: 5px 14px; font-size: 14px; border-radius: 6px;
   border: 1px solid #888; background: #f5f5f5; cursor: pointer; }
 .gazedemo button:disabled { opacity: .45; cursor: default; }
+.gazedemo .gd-gen { background: #1d7a3a; border-color: #1d7a3a; color: #fff; }
+.gazedemo .gd-stop { background: #a33333; border-color: #a33333; color: #fff; }
 .gazedemo .gd-badge { font-size: 13px; padding: 3px 10px; border-radius: 99px;
   background: #eee; border: 1px solid #ccc; }
 .gazedemo .gd-out { border: 1px solid #ddd; border-radius: 6px; padding: 12px;
@@ -165,7 +167,7 @@ const TEMPLATE = `
     Text is tinted by the panel that was steering it.</div>
   <div class="gd-controls">
     <select class="gd-comic" disabled></select>
-    <button class="gd-gen" disabled>Generate</button>
+    <button class="gd-gen" disabled>Start generating</button>
     <button class="gd-stop" disabled>Stop</button>
     <label style="font-size:14px"><input type="checkbox" class="gd-steer" checked /> steering</label>
     <span class="gd-badge">target: —</span>
@@ -284,7 +286,7 @@ export async function start(container) {
 
     status('prefilling (one-time per comic)…');
     await snapshotPromptKV();
-    status('ready — hover panels to steer while the model writes');
+    status('ready — press "Start generating", then hover panels to steer');
   }
 
   // Prefill prompt[:-1] once; each Generate resumes from CPU copies of the KV.
@@ -403,7 +405,7 @@ export async function start(container) {
         out.textContent = state.processor.batch_decode(
           outIds.slice(null, [state.promptLen, null]), { skip_special_tokens: true })[0];
       }
-      status('done — hover a different panel and Generate again, or steer while it writes');
+      status('done — hover a different panel and press "Start generating" again');
     } catch (err) {
       if (err.message !== '__stopped__') {
         status('generation failed: ' + err.message);
@@ -422,7 +424,4 @@ export async function start(container) {
 
   window.__gazedemo = { state, setTargetPanel }; // console debugging hook
 
-  // The page button says "Start generating" — honor it: begin writing as
-  // soon as the model is ready, so the visitor only has to hover.
-  $('gd-gen').click();
 }

@@ -1,5 +1,5 @@
 {
-  "name": "comic1",
+  "name": "comic4",
   "width": 2880,
   "height": 256,
   "panel_widths": [
@@ -21,7 +21,7 @@
   ],
   "gap": 6,
   "embeds": {
-    "file": "comic1.embeds.bin",
+    "file": "comic4.embeds.bin",
     "dims": [
       720,
       2048
