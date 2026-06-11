@@ -41,24 +41,6 @@
 :target {
   background-color: yellow;
 }
-.qualbox {
-  border: 1px solid #999;
-  border-radius: 6px;
-  background: #fafafa;
-  padding: 14px 18px;
-  margin: 10px auto 4px auto;
-  max-width: 800px;
-  text-align: left;
-  font-size: 0.95em;
-}
-.qualbox .prompt {
-  font-style: italic;
-  color: #444;
-}
-.qualbox table td {
-  padding: 1px 8px 1px 0;
-  vertical-align: top;
-}
 </style>
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-FD12LWN557"></script>
 <script>
@@ -127,18 +109,18 @@ this lever, and we find the same mechanism across model sizes and architectures.
 
 <figure class="center_image" style="margin-top: 30px">
   <center><img src="images/paper/gaze/vqa_strip.png" style="width:100%; max-width:1000px"></center>
-  <div class="qualbox">
-    <p class="prompt">"Read each of the panels and tell me. What is the main action happening in this particular comic panel? Just output the answer in few words."</p>
-    <p style="margin-bottom:6px"><span style="color:#a33">Baseline (no steering):</span> Cat discovers treasure map</p>
-    <p style="margin-bottom:2px"><span style="color:#1a4f9c">Steered responses when gaze is redirected to:</span></p>
-    <table>
-      <tr><td style="color:#1a4f9c">Panel 1:</td><td>Cat discovers treasure map.</td></tr>
-      <tr><td style="color:#1a4f9c">Panel 2:</td><td>Cat digs, digs, digs, digs, digs, digs.</td></tr>
-      <tr><td style="color:#1a4f9c">Panel 3:</td><td>Cat explores underwater.</td></tr>
-      <tr><td style="color:#1a4f9c">Panel 4:</td><td>Cat explores jungle.</td></tr>
-      <tr><td style="color:#1a4f9c">Panel 5:</td><td>Cat discovers gem.</td></tr>
-      <tr><td style="color:#1a4f9c">Panel 6:</td><td>Cat explores space.</td></tr>
-    </table>
+  <div class="card" style="max-width: 800px; margin: 10px auto 4px auto; text-align: left;">
+    <div class="card-block">
+    <p class="card-text"><i>"Read each of the panels and tell me. What is the main action happening in this particular comic panel? Just output the answer in few words."</i></p>
+    <p class="card-text" style="margin-bottom: 6px;"><span style="color:#a33">Baseline (no steering):</span> Cat discovers treasure map</p>
+    <p class="card-text" style="margin-bottom: 2px;"><span style="color:#1a4f9c">Steered responses when gaze is redirected to:</span><br>
+    <span style="color:#1a4f9c">Panel 1:</span> Cat discovers treasure map.<br>
+    <span style="color:#1a4f9c">Panel 2:</span> Cat digs, digs, digs, digs, digs, digs.<br>
+    <span style="color:#1a4f9c">Panel 3:</span> Cat explores underwater.<br>
+    <span style="color:#1a4f9c">Panel 4:</span> Cat explores jungle.<br>
+    <span style="color:#1a4f9c">Panel 5:</span> Cat discovers gem.<br>
+    <span style="color:#1a4f9c">Panel 6:</span> Cat explores space.</p>
+    </div>
   </div>
   <figcaption>One question, six different answers. The model is asked the exact same
   question in every condition. Without steering, it answers from the first panel.
@@ -252,19 +234,21 @@ this lever, and we find the same mechanism across model sizes and architectures.
   <figure class="center_image" style="margin-top: 30px">
     <center><img src="images/paper/gaze/dynamic_strip.png" style="width:100%; max-width:1000px"></center>
     <center><img src="images/paper/gaze/dynamic_trajectory.png" style="width:100%; max-width:850px; margin-top:8px"></center>
-    <div class="qualbox">
-      <p style="margin-bottom:6px"><b>Generated narration under dynamic gaze switching</b>
+    <div class="card" style="max-width: 800px; margin: 10px auto 4px auto; text-align: left;">
+      <div class="card-block">
+      <p class="card-text" style="margin-bottom:6px"><b>Generated narration under dynamic gaze switching</b>
       <span style="color:#777">(schedule: <span style="color:#a33">P2</span> &rarr;
       <span style="color:#1a4f9c">P4</span> &rarr; <span style="color:#b06000">P3</span> &rarr;
       <span style="color:#1c7a1c">P5</span> &rarr; <span style="color:#6a1c9c">P1</span> &rarr;
       <span style="color:#7a4a1c">P6</span>, switching every 50 tokens)</span></p>
-      <p style="font-size:0.92em; margin-bottom:0">
+      <p class="card-text" style="font-size:0.92em; margin-bottom:0">
       <span style="color:#a33">1. Two friends hike through forest, backpacks in tow, exploring nature's wonders. Trees tower as they trek, adventure awaiting beyond the woods' embrace. 2. Forest path winds through lush greenery, friends hike with backpacks and trees.</span>
       <span style="color:#1a4f9c">Nature's mystery awaits as they explore, hidden treasures hidden in shadows. 3. Children explore jungle, flashlight illuminates path. Hidden cave looms ahead, mystery beckons as vines dangle, adventure awaits in darkness. 4. Kids discover hidden cave</span><span style="color:#b06000">, river flows nearby. Nature's beauty surrounds them, adventure awaits as they cross streams, exploring wild landscapes. 5. Kids cross river, bridge spans rocky path. Nature's beauty surrounds them, adventure awaits as they explore, crossing streams, finding hidden</span>
       <span style="color:#1c7a1c">treasures. 6. Kids explore cave, glowing gems shine. Adventure ends as they discover hidden treasures, cave's secrets revealed in glowing light.</span>
       <span style="color:#6a1c9c">7. Kids explore attic, treasure chest awaits. Hidden secrets await, mystery unfolds as they uncover hidden treasures, childhood dreams come alive. 8. Kids explore attic, treasure chest awaits. Hidden secrets await, mystery unfolds as they uncover</span>
       <span style="color:#7a4a1c">hidden treasures, childhood dreams come alive. 9. Kids explore field, flowers bloom. Joyful moments unfold, nature's beauty surrounds them, friendship blooms with every step.</span>
       </p>
+      </div>
     </div>
     <figcaption>A single dynamic-switching run. Top: the six-panel strip. Middle: gaze-head
     attention during generation, with the target switched every 50 tokens. Bottom: the
