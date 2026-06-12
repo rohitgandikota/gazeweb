@@ -138,23 +138,22 @@ this lever, and we find the same mechanism across model sizes and architectures.
         the model as one single image.</b> When you hover, nothing about the
         input changes: same image, same prompt, same weights. The only
         intervention is that <b>10 attention heads are redirected</b> to look
-        at the panel under your cursor. Notice how the model still stitches
-        a smooth story even when you change its gaze abruptly; this suggests
-        the gaze heads play a larger role in the model's vision than in its
-        language. Qwen3-VL-2B runs
-        entirely in your browser; your cursor becomes the model's gaze.</p>
-      <ol style="margin-bottom: 12px;">
+        at the panel under your cursor.</p>
+      <p style="margin-bottom: 6px;">To begin:</p>
+      <ol style="margin-bottom: 8px;">
         <li>Click <b>Start demo</b> (the first load fetches ~1.2&nbsp;GB of
           model weights; cached for later visits).</li>
         <li><b>Hover over any panel</b> and the model starts writing about it.
           Move your cursor mid-sentence to re-steer it; the streamed text is
           tinted by the panel steering it.</li>
-        <li>Move off the strip to stop. Press <b>Generate without
-          steering</b> to see the baseline with no intervention.</li>
+        <li>Move off the strip to stop.</li>
       </ol>
-      <p id="gazedemo-note" style="color:#666; font-size: 14px;">Requires a
+      <p style="font-size: 14px;">(Press <b>Generate without steering</b> to
+        see the baseline with no intervention)</p>
+      <p id="gazedemo-note" style="color:#666; font-size: 14px;"><b>Requires a
       WebGPU-capable browser: recent Chrome or Edge on a desktop/laptop works
-      best.</p>
+      best.</b> Qwen3-VL-2B runs entirely in your browser; your cursor becomes
+      the model's gaze.</p>
       <p style="text-align:center;"><button id="gazedemo-start"
         style="padding: 10px 26px; font-size: 17px; border-radius: 8px;
         border: 1px solid #1a4f9c; background: #1a4f9c; color: white;
@@ -183,7 +182,7 @@ this lever, and we find the same mechanism across model sizes and architectures.
     btn.textContent = 'Starting\u2026';
     try {
       // Bump ?v= on demo.js changes so returning visitors never get a stale module.
-      var mod = await import('./demo/demo.js?v=18');
+      var mod = await import('./demo/demo.js?v=19');
       btn.style.display = 'none';
       await mod.start(document.getElementById('gazedemo-body'));
     } catch (e) {
