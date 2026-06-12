@@ -227,6 +227,23 @@ export async function start(container) {
   container.appendChild(mount);
   const $ = (cls) => mount.querySelector('.' + cls);
   const status = (t) => { $('gd-status').textContent = t; };
+  // Progress overlay over the strip — used for the initial model load AND for
+  // every per-comic preparation (embeds fetch + tokenize + KV prefill).
+  const showPrep = (initialMsg) => {
+    let ov = mount.querySelector('.gd-loading');
+    if (!ov) {
+      ov = document.createElement('div');
+      ov.className = 'gd-loading';
+      ov.innerHTML = '<div class="gd-loading-card"><div class="gd-loading-msg"></div>'
+        + '<div class="gd-progress"><progress max="100"></progress>'
+        + '<span class="gd-progress-label"></span></div></div>';
+      mount.querySelector('.gd-strip-wrap').appendChild(ov);
+    }
+    ov.querySelector('progress')?.removeAttribute('value'); // indeterminate pulse
+    const m = ov.querySelector('.gd-loading-msg');
+    if (m) m.textContent = initialMsg;
+  };
+  const hidePrep = () => { mount.querySelector('.gd-loading')?.remove(); };
   // During the initial load an overlay card covers the strip; route progress
   // messages there while it exists, to the status line afterwards.
   const msg = (t) => { const m = mount.querySelector('.gd-loading-msg'); if (m) m.textContent = t; else status(t); };
@@ -316,7 +333,7 @@ export async function start(container) {
   // ---- per-comic preparation ------------------------------------------------
   async function loadComic(name) {
     state.ready = false;
-    msg('Preparing the comic…');
+    showPrep('Preparing the comic…');
     state.meta = await (await fetch(asset(`comics/${name}.json`))).json();
     const buf = await (await fetch(asset(`comics/${state.meta.embeds.file}`))).arrayBuffer();
     state.embeds = new Float32Array(buf);
@@ -353,6 +370,7 @@ export async function start(container) {
     await snapshotPromptKV();
     state.ready = true;
     state.hoverArmed = true;
+    hidePrep();
     status('ready — hover a comic panel and the model starts writing');
   }
 
