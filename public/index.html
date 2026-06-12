@@ -139,9 +139,9 @@ this lever, and we find the same mechanism across model sizes and architectures.
         input changes: same image, same prompt, same weights. The only
         intervention is that <b>10 attention heads are redirected</b> to look
         at the panel under your cursor. Notice how the model still stitches
-        a smooth story even when you change its gaze abruptly: these heads
-        carry <b>the model's gaze, not its language</b>, so steering them
-        changes what it looks at, never how it writes. Qwen3-VL-2B runs
+        a smooth story even when you change its gaze abruptly; this suggests
+        the gaze heads play a larger role in the model's vision than in its
+        language. Qwen3-VL-2B runs
         entirely in your browser; your cursor becomes the model's gaze.</p>
       <ol style="margin-bottom: 12px;">
         <li>Click <b>Start demo</b> (the first load fetches ~1.2&nbsp;GB of
@@ -183,7 +183,7 @@ this lever, and we find the same mechanism across model sizes and architectures.
     btn.textContent = 'Starting\u2026';
     try {
       // Bump ?v= on demo.js changes so returning visitors never get a stale module.
-      var mod = await import('./demo/demo.js?v=17');
+      var mod = await import('./demo/demo.js?v=18');
       btn.style.display = 'none';
       await mod.start(document.getElementById('gazedemo-body'));
     } catch (e) {
