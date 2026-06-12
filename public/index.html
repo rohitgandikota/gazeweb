@@ -134,9 +134,15 @@ this lever, and we find the same mechanism across model sizes and architectures.
   <h2 id="demo">Try it yourself: steer the gaze heads live in your browser</h2>
   <div class="card" style="max-width: 1020px; margin: 10px auto;">
     <div class="card-block" id="gazedemo-body">
-      <p>This demo runs <b>Qwen3-VL-2B entirely in your browser</b>, with the
-        paper's attention edit applied to its top-10 gaze heads live as it
-        writes. Your cursor becomes the model's gaze.</p>
+      <p><b>Below is a single image with a 6-panel layout. It is provided to
+        the model as one single image.</b> When you hover, nothing about the
+        input changes: same image, same prompt, same weights. The only
+        intervention is that <b>10 attention heads are redirected</b> to look
+        at the panel under your cursor. Notice how the model still stitches
+        a smooth story even when you change its gaze abruptly: these heads
+        carry <b>the model's gaze, not its language</b>, so steering them
+        changes what it looks at, never how it writes. Qwen3-VL-2B runs
+        entirely in your browser; your cursor becomes the model's gaze.</p>
       <ol style="margin-bottom: 12px;">
         <li>Click <b>Start demo</b> (the first load fetches ~1.2&nbsp;GB of
           model weights; cached for later visits).</li>
@@ -177,7 +183,7 @@ this lever, and we find the same mechanism across model sizes and architectures.
     btn.textContent = 'Starting\u2026';
     try {
       // Bump ?v= on demo.js changes so returning visitors never get a stale module.
-      var mod = await import('./demo/demo.js?v=13');
+      var mod = await import('./demo/demo.js?v=17');
       btn.style.display = 'none';
       await mod.start(document.getElementById('gazedemo-body'));
     } catch (e) {

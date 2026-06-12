@@ -164,16 +164,18 @@ const STYLES = `
 .gazedemo .gd-stop { background: #a33333; border-color: #a33333; color: #fff; }
 .gazedemo .gd-badge { font-size: 13px; padding: 3px 10px; border-radius: 99px;
   background: #eee; border: 1px solid #ccc; }
-.gazedemo .gd-out { border: 1px solid #ddd; border-radius: 6px; padding: 12px;
-  min-height: 100px; max-height: 320px; overflow-y: auto; font-size: 15px;
-  line-height: 1.55; white-space: pre-wrap; background: #fff; }
+.gazedemo .gd-out { border: 1px solid #ddd; border-radius: 6px; padding: 14px;
+  min-height: 100px; max-height: 380px; overflow-y: auto; font-size: 18px;
+  line-height: 1.6; white-space: pre-wrap; background: #fff; color: #000; }
 .gazedemo .gd-out span.p0 { background: #ffe6e6; } .gazedemo .gd-out span.p1 { background: #fff2cc; }
 .gazedemo .gd-out span.p2 { background: #e6ffe6; } .gazedemo .gd-out span.p3 { background: #e6f2ff; }
 .gazedemo .gd-out span.p4 { background: #f2e6ff; } .gazedemo .gd-out span.p5 { background: #ffe6f7; }
 .gazedemo .gd-status { color: #555; font-size: 13px; min-height: 18px; margin: 8px 0; }
 .gazedemo .gd-perf { font-size: 12px; color: #777; margin-top: 6px; }
 .gazedemo .gd-hint { font-size: 13px; color: #555; margin-top: 6px; }
+.gazedemo .gd-fact { font-size: 13px; color: #444; margin: 0 0 6px; }
 .gazedemo.loading .gd-status, .gazedemo.loading .gd-hint,
+.gazedemo.loading .gd-fact,
 .gazedemo.loading .gd-controls, .gazedemo.loading .gd-out,
 .gazedemo.loading .gd-perf { display: none; }
 .gazedemo .gd-loading { position: absolute; inset: 0; display: flex;
@@ -191,6 +193,11 @@ const STYLES = `
 const TEMPLATE = `
 <div class="gazedemo loading">
   <div class="gd-status">Starting…</div>
+  <div class="gd-fact"><b>A single image with a 6-panel layout, provided to
+    the model as one image.</b> Hovering redirects just <b>10 attention
+    heads</b>. Notice how the model still stitches a smooth story even when
+    you change its gaze abruptly: we steer <b>where it looks</b>, not how it
+    writes.</div>
   <div class="gd-strip-wrap">
     <img class="gd-strip" alt="comic strip" />
     <div class="gd-hl"></div>
