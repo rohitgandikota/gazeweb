@@ -26,18 +26,29 @@ import {
 } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@4.2.0/dist/transformers.min.js';
 
 const MODEL_ID = 'baulab/Qwen3-VL-2B-Instruct-GazeHeads-ONNX';
-const PROMPT = 'Describe this comic strip in detail.';
+const PROMPT = 'Tell what happens in this comic strip as one smooth, flowing story, '
+  + 'like a storyteller reading aloud. Never mention the comic, panels, scenes, '
+  + 'frames, images, or their order — no phrases like "in the first scene", '
+  + '"the next panel", or "the scene shifts". Just tell the story itself, '
+  + 'in plain prose paragraphs.';
 const MAX_NEW_TOKENS = 500;
+// Reading pace: minimum ms between decode steps. Throttles the decode loop
+// itself (NOT a display buffer), so hover re-steering still shows up within
+// one step — the text on screen is always the newest token.
+const PACE_MS = 125;
 const MIN_NEW_TOKENS = 400;
 const TOP_K = 10;
 const DELTA = 10000.0;
 const N_LAYERS = 28, N_HEADS = 16;
 
 const COMICS = [
+  { name: 'mixed2', label: 'Variety of objects' },
+  { name: 'robotour', label: 'Tiny robot world tour' },
+  { name: 'balloonride', label: 'Red balloon journey' },
+  { name: 'comic4', label: "Cat's treasure hunt" },
   { name: 'comic217', label: 'Dragon through the seasons' },
   { name: 'comic110', label: 'Dog earns cookies' },
   { name: 'comic281', label: 'Scientist at work' },
-  { name: 'comic4', label: "Cat's treasure hunt" },
 ];
 
 const asset = (p) => new URL(p, import.meta.url).href;
@@ -50,6 +61,7 @@ class GazeController {
     this.headMask = new Float32Array(N_LAYERS * N_HEADS);
     this.boost = []; this.suppress = [];
     this.stats = { calls: 0, steered: 0 };
+    this.paceMs = 0; this._lastStep = 0;
   }
   setHeads(heads) {
     this.headMask.fill(0);
@@ -72,6 +84,11 @@ class GazeController {
       const am = feeds.attention_mask;
       const totalLen = Number(am.dims[am.dims.length - 1]);
       const seqLen = feeds.inputs_embeds ? Number(feeds.inputs_embeds.dims[1]) : 1;
+      if (seqLen === 1 && ctl.paceMs > 0) {
+        const wait = ctl._lastStep + ctl.paceMs - performance.now();
+        if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+        ctl._lastStep = performance.now();
+      }
       return origRun({ ...feeds, ...ctl.buildFeeds(totalLen, seqLen, am.constructor) }, ...rest);
     };
   }
@@ -265,6 +282,7 @@ export async function start(container) {
       (s) => s.inputNames?.includes?.('gaze_sign'));
     if (!decoder) throw new Error('gaze inputs missing from decoder');
     state.gaze.attach(decoder);
+    state.gaze.paceMs = PACE_MS;
     const ranking = await (await fetch(asset('gaze_head_ranking_qwen3vl_2b.json'))).json();
     state.gaze.setHeads(ranking.slice(0, TOP_K));
 
@@ -401,7 +419,7 @@ export async function start(container) {
     if (p >= 0) {
       const L = (b[p] / state.meta.width * 100).toFixed(3);
       const R = (b[p + 1] / state.meta.width * 100).toFixed(3);
-      const dim = 'rgba(0,0,0,0.45)', clear = 'rgba(0,0,0,0)';
+      const dim = 'rgba(0,0,0,0.6)', clear = 'rgba(0,0,0,0)';
       hl.style.display = 'block';
       hl.style.background = `linear-gradient(to right, ${dim} 0%, ${dim} ${L}%, ` +
         `${clear} ${L}%, ${clear} ${R}%, ${dim} ${R}%, ${dim} 100%)`;
