@@ -43,6 +43,9 @@ const MIN_NEW_TOKENS = 400;
 const TOP_K = 10;
 const DELTA = 10000.0;
 const N_LAYERS = 28, N_HEADS = 16;
+// Spotlight radius clamp (display px). At the minimum the steered region is
+// forced to a 3x3 = 9-token block, so the smallest spotlight is always 9 tokens.
+const MIN_RADIUS = 38, MAX_RADIUS = 170;
 
 const COMICS = [
   { name: 'mixed2', label: 'Variety of objects' },
@@ -166,8 +169,6 @@ const STYLES = `
 .gazedemo button:disabled { opacity: .45; cursor: default; }
 .gazedemo .gd-gen { background: #1d7a3a; border-color: #1d7a3a; color: #fff; }
 .gazedemo .gd-stop { background: #a33333; border-color: #a33333; color: #fff; }
-.gazedemo .gd-badge { font-size: 13px; padding: 3px 10px; border-radius: 99px;
-  background: #eee; border: 1px solid #ccc; }
 .gazedemo .gd-out { border: 1px solid #ddd; border-radius: 6px; padding: 14px;
   min-height: 100px; max-height: 380px; overflow-y: auto; font-size: 18px;
   line-height: 1.6; white-space: pre-wrap; background: #fff; color: #000; }
@@ -221,7 +222,6 @@ const TEMPLATE = `
     <select class="gd-comic" disabled></select>
     <button class="gd-gen" disabled>Generate without steering</button>
     <button class="gd-stop" disabled>Stop</button>
-    <span class="gd-badge">target: —</span>
   </div>
   <div class="gd-out"></div>
   <div class="gd-perf"></div>
@@ -442,7 +442,6 @@ export async function start(container, opts = {}) {
   function clearTarget() {
     state.currentPanel = -1;
     state.gaze.clear();
-    $('gd-badge').textContent = 'target: —';
   }
   function applyTarget() {
     if (!state.meta) return;
@@ -453,10 +452,10 @@ export async function start(container, opts = {}) {
     const rImg = state.radiusPx / rect.width * W;    // radius in image px (uniform scale)
     let boost = bboxToTokenPositions(
       [ix - rImg, iy - rImg, ix + rImg, iy + rImg], state.grid, [W, H], state.imgStart);
-    // Floor the steered region at a 3x3 block (9 tokens) so the smallest
-    // spotlight still covers a meaningful neighbourhood (also covers the case
-    // where a small circle near a strip edge would otherwise clip to a sliver).
-    if (boost.length < 9) {
+    // Floor the steered region at a 3x3 block (9 tokens): always at the minimum
+    // radius (so the smallest spotlight is exactly 9 regardless of display size),
+    // and whenever the box would otherwise clip to fewer than 9 cells.
+    if (state.radiusPx <= MIN_RADIUS || boost.length < 9) {
       const w = state.grid.w, h = state.grid.h;
       const col = Math.min(w - 1, Math.max(0, Math.round(ix / W * w - 0.5)));
       const row = Math.min(h - 1, Math.max(0, Math.round(iy / H * h - 0.5)));
@@ -473,7 +472,6 @@ export async function start(container, opts = {}) {
     state.currentPanel = p;
     const boostSet = new Set(boost);
     state.gaze.setTarget({ boost, suppress: [...state.allImage].filter((pos) => !boostSet.has(pos)) });
-    $('gd-badge').textContent = `steering ${boost.length} image token${boost.length > 1 ? 's' : ''}`;
   }
 
   $('gd-strip-wrap').addEventListener('mousemove', (e) => {
@@ -499,7 +497,7 @@ export async function start(container, opts = {}) {
   $('gd-strip-wrap').addEventListener('wheel', (e) => {
     if (!state.meta) return;
     e.preventDefault();
-    state.radiusPx = Math.max(40, Math.min(170, state.radiusPx + (e.deltaY < 0 ? 9 : -9)));
+    state.radiusPx = Math.max(MIN_RADIUS, Math.min(MAX_RADIUS, state.radiusPx + (e.deltaY < 0 ? 9 : -9)));
     if (state.hovering) { renderSpot(); applyTarget(); }
   }, { passive: false });
   $('gd-strip-wrap').addEventListener('mouseleave', () => {
