@@ -625,8 +625,7 @@ export async function start(container, opts = {}) {
     sel.className = 'gd-headmode';
     sel.title = 'Which heads to steer';
     sel.innerHTML = '<option value="gaze">Gaze heads (top 10)</option>'
-      + '<option value="all">All heads</option>'
-      + '<option value="random">Random 10 heads</option>';
+      + '<option value="all">All heads</option>';
     sel.onchange = () => applyHeadMode(sel.value);
     $('gd-controls').insertBefore(sel, $('gd-comic'));
   }
