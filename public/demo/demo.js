@@ -152,8 +152,9 @@ const STYLES = `
   cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24'%3E%3Ccircle cx='10' cy='10' r='6' fill='white' fill-opacity='.3' stroke='%231d7a3a' stroke-width='2'/%3E%3Cline x1='14.5' y1='14.5' x2='21' y2='21' stroke='%23222' stroke-width='3' stroke-linecap='round'/%3E%3Cline x1='6.5' y1='7.5' x2='8.5' y2='5.5' stroke='white' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E") 10 10, crosshair; }
 .gazedemo .gd-strip { display: block; width: 100%; }
 .gazedemo .gd-hl { position: absolute; inset: 0; display: none;
-  /* spotlight: full-strip overlay; JS paints a gradient that dims everything
-     except a transparent window over the hovered panel */
+  /* circular spotlight (UI only): JS paints a radial gradient that dims the
+     strip except a round window following the cursor. The steered region is
+     the bounding box of this circle (see applyTarget). */
   pointer-events: none; }
 .gazedemo .gd-controls { margin: 12px 0; display: flex; gap: 10px; align-items: center;
   flex-wrap: wrap; }
@@ -208,9 +209,9 @@ const TEMPLATE = `
       </div>
     </div>
   </div>
-  <div class="gd-hint"><b>Hover a panel and the model starts writing about
-    it.</b> Slide to another panel to re-steer mid-sentence; move off the strip
-    to stop. Text is tinted by the panel that was steering it.</div>
+  <div class="gd-hint"><b>Hover the strip and the model writes about whatever is
+    under your spotlight.</b> Move to re-steer mid-sentence, scroll to resize the
+    spotlight, and move off to stop. Text is tinted by the region steering it.</div>
   <div class="gd-controls">
     <select class="gd-comic" disabled></select>
     <button class="gd-gen" disabled>Generate without steering</button>
@@ -222,7 +223,7 @@ const TEMPLATE = `
 </div>`;
 
 // ---------------------------------------------------------------------------
-export async function start(container) {
+export async function start(container, opts = {}) {
   if (!document.getElementById('gazedemo-styles')) {
     const st = document.createElement('style');
     st.id = 'gazedemo-styles';
@@ -234,6 +235,7 @@ export async function start(container) {
   container.appendChild(mount);
   const $ = (cls) => mount.querySelector('.' + cls);
   const status = (t) => { $('gd-status').textContent = t; };
+  const modelId = opts.modelId || MODEL_ID; // recording pages can point at the all-layers build
   // Progress overlay over the strip — used for the initial model load AND for
   // every per-comic preparation (embeds fetch + tokenize + KV prefill).
   const showPrep = (initialMsg) => {
@@ -262,19 +264,21 @@ export async function start(container) {
 
   const state = {
     processor: null, model: null, gaze: new GazeController(), config: null,
-    inputs: null, promptLen: 0, grid: null, panelPositions: [], allImage: null,
+    inputs: null, promptLen: 0, grid: null, imgStart: 0, allImage: null,
     meta: null, image: null, embeds: null, embedsDims: null,
     kvSnapshot: null, CacheCtor: null,
     generating: false, stopFlag: false, currentPanel: -1,
+    hovering: false, spot: { x: 0, y: 0 }, radiusPx: 70,
     ready: false, hoverArmed: true, hoverTimer: null, leaveTimer: null,
+    ranking: null, steerLayers: [], headMode: 'gaze',
   };
 
   // ---- model load (starts immediately) -------------------------------------
   try {
     msg('Preparing the demo…');
-    state.processor = await AutoProcessor.from_pretrained(MODEL_ID);
+    state.processor = await AutoProcessor.from_pretrained(modelId);
     state.config = await (await fetch(
-      `https://huggingface.co/${MODEL_ID}/resolve/main/config.json`)).json();
+      `https://huggingface.co/${modelId}/resolve/main/config.json`)).json();
 
     const dlFiles = new Map();
     const bar = $('gd-progress');
@@ -287,7 +291,7 @@ export async function start(container) {
         `${(loaded / 1e9).toFixed(2)} / ${(total / 1e9).toFixed(2)} GB`;
       msg('Downloading the model — one-time, cached for your next visit');
     };
-    state.model = await AutoModelForImageTextToText.from_pretrained(MODEL_ID, {
+    state.model = await AutoModelForImageTextToText.from_pretrained(modelId, {
       dtype: { embed_tokens: 'q4f16', vision_encoder: 'q4f16', decoder_model_merged: 'q4f16' },
       device: 'webgpu',
       progress_callback: (p) => {
@@ -307,8 +311,16 @@ export async function start(container) {
     if (!decoder) throw new Error('gaze inputs missing from decoder');
     state.gaze.attach(decoder);
     state.gaze.paceMs = PACE_MS;
-    const ranking = await (await fetch(asset('gaze_head_ranking_qwen3vl_2b.json'))).json();
-    state.gaze.setHeads(ranking.slice(0, TOP_K));
+    state.ranking = await (await fetch(asset('gaze_head_ranking_qwen3vl_2b.json'))).json();
+    // Which layers actually honor the steering bias. The default (site) graph
+    // only wired the 7 gaze-hosting layers; the all-layers build (opts.allLayers,
+    // used by the recording control demos) wires every layer, so all 448 heads
+    // are steerable and "random" can draw from anywhere in the network.
+    state.steerLayers = opts.allLayers
+      ? Array.from({ length: N_LAYERS }, (_, i) => i)
+      : [...new Set(state.ranking.slice(0, 20).map((e) => e.layer))];
+    applyHeadMode(opts.headSet || 'gaze');
+    if (opts.headModes) buildHeadModeSelect();
 
     // Precomputed image features instead of the vision tower.
     state.model.encode_image = async () =>
@@ -362,14 +374,10 @@ export async function start(container) {
     const [t, gh, gw] = Array.from(state.inputs.image_grid_thw.data, Number);
     const merge = state.config.vision_config.spatial_merge_size ?? 2;
     state.grid = { t, h: gh / merge, w: gw / merge };
-    state.panelPositions = [];
-    for (let p = 0; p < state.meta.panel_widths.length; p++) {
-      state.panelPositions.push(bboxToTokenPositions(
-        [state.meta.panel_boundaries_px[p], 0, state.meta.panel_boundaries_px[p + 1], state.meta.height],
-        state.grid, [state.meta.width, state.meta.height], imgStart));
-    }
+    state.imgStart = imgStart;
     state.allImage = new Set(Array.from({ length: imgEnd - imgStart }, (_, i) => imgStart + i));
-    setTargetPanel(-1);
+    state.hovering = false;
+    clearTarget();
     $('gd-out').textContent = '';
     $('gd-perf').textContent = '';
 
@@ -418,53 +426,73 @@ export async function start(container) {
     return past;
   }
 
-  // ---- hover-to-steer --------------------------------------------------------
-  function setTargetPanel(p) {
+  // ---- hover-to-steer (continuous circular spotlight) ------------------------
+  // Visual: a round "torch" follows the cursor (UI only). Backend: the bounding
+  // box of that circle is fed to the same bboxToTokenPositions, so the steered
+  // region glides continuously with the cursor instead of snapping to panels.
+  function renderSpot() {
+    const hl = $('gd-hl');
+    if (!state.hovering) { hl.style.display = 'none'; return; }
+    const { x, y } = state.spot, r = state.radiusPx, feather = 20;
+    hl.style.display = 'block';
+    hl.style.background = `radial-gradient(circle at ${x}px ${y}px, `
+      + `rgba(0,0,0,0) 0px, rgba(0,0,0,0) ${r}px, rgba(0,0,0,0.6) ${r + feather}px)`;
+  }
+  function clearTarget() {
+    state.currentPanel = -1;
+    state.gaze.clear();
+    $('gd-badge').textContent = 'target: —';
+  }
+  function applyTarget() {
+    if (!state.meta) return;
+    const rect = $('gd-strip').getBoundingClientRect();
+    const W = state.meta.width, H = state.meta.height;
+    const ix = state.spot.x / rect.width * W;       // cursor in image px
+    const iy = state.spot.y / rect.height * H;
+    const rImg = state.radiusPx / rect.width * W;    // radius in image px (uniform scale)
+    const boost = bboxToTokenPositions(
+      [ix - rImg, iy - rImg, ix + rImg, iy + rImg], state.grid, [W, H], state.imgStart);
+    // tint colour: whichever panel the spotlight centre sits over
+    const b = state.meta.panel_boundaries_px;
+    let p = -1;
+    for (let i = 0; i < b.length - 1; i++) if (ix >= b[i] && ix < b[i + 1]) { p = i; break; }
     state.currentPanel = p;
-    $('gd-badge').textContent = p >= 0 ? `target: panel ${p + 1}` : 'target: —';
-    if (p < 0) { state.gaze.clear(); return; }
-    const boost = state.panelPositions[p];
+    if (!boost.length) { state.gaze.clear(); $('gd-badge').textContent = 'spotlight too small'; return; }
     const boostSet = new Set(boost);
-    state.gaze.setTarget({
-      boost,
-      suppress: [...state.allImage].filter((pos) => !boostSet.has(pos)),
-    });
+    state.gaze.setTarget({ boost, suppress: [...state.allImage].filter((pos) => !boostSet.has(pos)) });
+    $('gd-badge').textContent = `steering ${boost.length} image tokens`;
   }
 
   $('gd-strip-wrap').addEventListener('mousemove', (e) => {
     if (!state.meta) return;
-    const img = $('gd-strip');
-    const rect = img.getBoundingClientRect();
-    const px = (e.clientX - rect.left) / rect.width * state.meta.width;
-    const b = state.meta.panel_boundaries_px;
-    let p = -1;
-    for (let i = 0; i < b.length - 1; i++) if (px >= b[i] && px < b[i + 1]) { p = i; break; }
-    if (p !== state.currentPanel) setTargetPanel(p);
-    const hl = $('gd-hl');
-    if (p >= 0) {
-      const L = (b[p] / state.meta.width * 100).toFixed(3);
-      const R = (b[p + 1] / state.meta.width * 100).toFixed(3);
-      const dim = 'rgba(0,0,0,0.6)', clear = 'rgba(0,0,0,0)';
-      hl.style.display = 'block';
-      hl.style.background = `linear-gradient(to right, ${dim} 0%, ${dim} ${L}%, ` +
-        `${clear} ${L}%, ${clear} ${R}%, ${dim} ${R}%, ${dim} 100%)`;
-      // Back on the strip: cancel any pending hover-out stop.
-      if (state.leaveTimer) { clearTimeout(state.leaveTimer); state.leaveTimer = null; }
-      // Hovering a panel IS the start button (small delay = hover intent).
-      if (state.ready && state.hoverArmed && !state.generating && !state.hoverTimer) {
-        state.hoverTimer = setTimeout(() => {
-          state.hoverTimer = null;
-          if (state.ready && state.hoverArmed && !state.generating && state.currentPanel >= 0) {
-            state.hoverArmed = false;
-            runGeneration();
-          }
-        }, 150);
-      }
+    const rect = $('gd-strip').getBoundingClientRect();
+    state.spot = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    state.hovering = true;
+    renderSpot();
+    applyTarget();
+    if (state.leaveTimer) { clearTimeout(state.leaveTimer); state.leaveTimer = null; }
+    // Entering the strip starts a run (small delay = hover intent).
+    if (state.ready && state.hoverArmed && !state.generating && !state.hoverTimer) {
+      state.hoverTimer = setTimeout(() => {
+        state.hoverTimer = null;
+        if (state.ready && state.hoverArmed && !state.generating && state.hovering) {
+          state.hoverArmed = false;
+          runGeneration();
+        }
+      }, 150);
     }
   });
+  // Mouse wheel resizes the spotlight (UI radius -> larger/smaller steered box).
+  $('gd-strip-wrap').addEventListener('wheel', (e) => {
+    if (!state.meta) return;
+    e.preventDefault();
+    state.radiusPx = Math.max(30, Math.min(170, state.radiusPx + (e.deltaY < 0 ? 9 : -9)));
+    if (state.hovering) { renderSpot(); applyTarget(); }
+  }, { passive: false });
   $('gd-strip-wrap').addEventListener('mouseleave', () => {
-    $('gd-hl').style.display = 'none';
-    setTargetPanel(-1);
+    state.hovering = false;
+    renderSpot();
+    clearTarget();
     if (state.hoverTimer) { clearTimeout(state.hoverTimer); state.hoverTimer = null; }
     // Grace period so brushing past the strip edge doesn't kill the run.
     if (!state.leaveTimer) {
@@ -479,7 +507,7 @@ export async function start(container) {
   // ---- generation -------------------------------------------------------------
   $('gd-gen').onclick = () => {
     // Baseline: generate with no steering (hovering mid-run still re-steers).
-    setTargetPanel(-1);
+    clearTarget();
     state.hoverArmed = false; // don't let the same hover restart a new run
     runGeneration();
   };
@@ -492,7 +520,8 @@ export async function start(container) {
     $('gd-stop').disabled = false;
     const out = $('gd-out');
     out.textContent = '';
-    setTargetPanel(state.currentPanel);
+    // The current target is already set by the latest mousemove (or cleared by
+    // the baseline button), so no re-targeting needed here.
 
     const t0 = performance.now();
     let nTokens = 0;
@@ -545,6 +574,52 @@ export async function start(container) {
 
   $('gd-stop').onclick = () => { state.stopFlag = true; };
 
-  window.__gazedemo = { state, setTargetPanel }; // console debugging hook
+  // ---- head-set modes (recording demo only; gated by opts.headModes) -------
+  const headKey = (e) => e.layer * N_HEADS + e.head;
+  function applyHeadMode(mode) {
+    state.headMode = mode;
+    if (!state.ranking) return;
+    if (mode === 'all') {
+      // Every head in the steerable layers at once (heads outside these layers
+      // are inert in the graph). Over-steering — expected to degrade the story.
+      const heads = [];
+      for (const l of state.steerLayers) {
+        for (let h = 0; h < N_HEADS; h++) heads.push({ layer: l, head: h });
+      }
+      state.gaze.setHeads(heads);
+    } else if (mode === 'random') {
+      // 10 random NON-gaze heads — a control showing arbitrary heads don't
+      // carry gaze. The wired layers (16-22) are gaze-rich, so even non-top-10
+      // heads there partially steer; restrict the pool to genuinely low-gaze
+      // heads (rank >= 100, outside the paper's gaze set). Re-rolls on select.
+      const rankOf = new Map(state.ranking.map((e, i) => [headKey(e), i]));
+      const pool = [];
+      for (const l of state.steerLayers) {
+        for (let h = 0; h < N_HEADS; h++) {
+          const e = { layer: l, head: h };
+          if ((rankOf.get(headKey(e)) ?? 1e9) >= 100) pool.push(e);
+        }
+      }
+      for (let i = pool.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [pool[i], pool[j]] = [pool[j], pool[i]];
+      }
+      state.gaze.setHeads(pool.slice(0, TOP_K));
+    } else {
+      state.gaze.setHeads(state.ranking.slice(0, TOP_K));
+    }
+  }
+  function buildHeadModeSelect() {
+    const sel = document.createElement('select');
+    sel.className = 'gd-headmode';
+    sel.title = 'Which heads to steer';
+    sel.innerHTML = '<option value="gaze">Gaze heads (top 10)</option>'
+      + '<option value="all">All heads</option>'
+      + '<option value="random">Random 10 heads</option>';
+    sel.onchange = () => applyHeadMode(sel.value);
+    $('gd-controls').insertBefore(sel, $('gd-comic'));
+  }
+
+  window.__gazedemo = { state, applyHeadMode, clearTarget, applyTarget, renderSpot }; // console debugging hook
 
 }

@@ -137,14 +137,15 @@ this lever, and we find the same mechanism across model sizes and architectures.
         the model as one single image.</b> When you hover, nothing about the
         input changes: same image, same prompt, same weights. The only
         intervention is that <b>10 attention heads are redirected</b> to look
-        at the panel under your cursor.</p>
+        at the region under your cursor.</p>
       <p style="margin-bottom: 6px;">To begin:</p>
       <ol style="margin-bottom: 8px;">
         <li>Click <b>Start demo</b> (the first load fetches ~1.2&nbsp;GB of
           model weights; cached for later visits).</li>
-        <li><b>Hover over any panel</b> and the model starts writing about it.
-          Move your cursor mid-sentence to re-steer it; the streamed text is
-          tinted by the panel steering it.</li>
+        <li><b>Hover the strip and the model writes about whatever is under
+          your spotlight.</b> Move your cursor to re-steer mid-sentence, and
+          scroll to grow or shrink the spotlight. The streamed text is tinted
+          by the region steering it.</li>
         <li>Move off the strip to stop.</li>
       </ol>
       <p style="font-size: 14px;">(Press <b>Generate without steering</b> to
@@ -181,7 +182,7 @@ this lever, and we find the same mechanism across model sizes and architectures.
     btn.textContent = 'Starting\u2026';
     try {
       // Bump ?v= on demo.js changes so returning visitors never get a stale module.
-      var mod = await import('./demo/demo.js?v=19');
+      var mod = await import('./demo/demo.js?v=23');
       btn.style.display = 'none';
       await mod.start(document.getElementById('gazedemo-body'));
     } catch (e) {
