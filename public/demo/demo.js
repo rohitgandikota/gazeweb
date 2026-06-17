@@ -174,6 +174,7 @@ const STYLES = `
 .gazedemo .gd-status { color: #555; font-size: 13px; min-height: 18px; margin: 8px 0; }
 .gazedemo .gd-perf { font-size: 12px; color: #777; margin-top: 6px; }
 .gazedemo .gd-hint { font-size: 13px; color: #555; margin-top: 6px; }
+.gazedemo .gd-hint .gd-key { font-weight: 700; font-size: 1.35em; color: #1a4f9c; }
 .gazedemo .gd-fact { font-size: 13px; color: #444; margin: 0 0 6px; }
 .gazedemo.loading .gd-status, .gazedemo.loading .gd-hint,
 .gazedemo.loading .gd-fact,
@@ -209,9 +210,10 @@ const TEMPLATE = `
       </div>
     </div>
   </div>
-  <div class="gd-hint"><b>Hover the strip and the model writes about whatever is
-    under your spotlight.</b> Move to re-steer mid-sentence, scroll to resize the
-    spotlight, and move off to stop. Text is tinted by the region steering it.</div>
+  <div class="gd-hint"><span class="gd-key">Hover</span> the strip and the model
+    writes about whatever is under your spotlight. Move to re-steer mid-sentence,
+    <span class="gd-key">scroll</span> to resize the spotlight, and move off to stop.
+    Text is tinted by the region steering it.</div>
   <div class="gd-controls">
     <select class="gd-comic" disabled></select>
     <button class="gd-gen" disabled>Generate without steering</button>
@@ -268,7 +270,7 @@ export async function start(container, opts = {}) {
     meta: null, image: null, embeds: null, embedsDims: null,
     kvSnapshot: null, CacheCtor: null,
     generating: false, stopFlag: false, currentPanel: -1,
-    hovering: false, spot: { x: 0, y: 0 }, radiusPx: 70,
+    hovering: false, spot: { x: 0, y: 0 }, radiusPx: 48,
     ready: false, hoverArmed: true, hoverTimer: null, leaveTimer: null,
     ranking: null, steerLayers: [], headMode: 'gaze',
   };
