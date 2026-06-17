@@ -25,7 +25,10 @@ import {
   load_image,
 } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@4.2.0/dist/transformers.min.js';
 
-const MODEL_ID = 'baulab/Qwen3-VL-2B-Instruct-GazeHeads-ONNX';
+// All-layers build: every layer decomposed, so all 448 heads are steerable.
+// One model serves every mode (gaze top-10, all heads, random) — visitors
+// download it once whether they use the main demo or the control demos.
+const MODEL_ID = 'baulab/Qwen3-VL-2B-Instruct-GazeHeads-AllLayers-ONNX';
 const PROMPT = 'Tell what happens in this comic strip as one smooth, flowing story, '
   + 'like a storyteller reading aloud. Never mention the comic, panels, scenes, '
   + 'frames, images, or their order — no phrases like "in the first scene", '
@@ -314,13 +317,9 @@ export async function start(container, opts = {}) {
     state.gaze.attach(decoder);
     state.gaze.paceMs = PACE_MS;
     state.ranking = await (await fetch(asset('gaze_head_ranking_qwen3vl_2b.json'))).json();
-    // Which layers actually honor the steering bias. The default (site) graph
-    // only wired the 7 gaze-hosting layers; the all-layers build (opts.allLayers,
-    // used by the recording control demos) wires every layer, so all 448 heads
-    // are steerable and "random" can draw from anywhere in the network.
-    state.steerLayers = opts.allLayers
-      ? Array.from({ length: N_LAYERS }, (_, i) => i)
-      : [...new Set(state.ranking.slice(0, 20).map((e) => e.layer))];
+    // Every layer is decomposed in this model, so all 448 heads honor the bias;
+    // head-set modes (gaze top-10, all, random) can draw from any layer.
+    state.steerLayers = Array.from({ length: N_LAYERS }, (_, i) => i);
     applyHeadMode(opts.headSet || 'gaze');
     if (opts.headModes) buildHeadModeSelect();
 
@@ -452,17 +451,29 @@ export async function start(container, opts = {}) {
     const ix = state.spot.x / rect.width * W;       // cursor in image px
     const iy = state.spot.y / rect.height * H;
     const rImg = state.radiusPx / rect.width * W;    // radius in image px (uniform scale)
-    const boost = bboxToTokenPositions(
+    let boost = bboxToTokenPositions(
       [ix - rImg, iy - rImg, ix + rImg, iy + rImg], state.grid, [W, H], state.imgStart);
+    // Floor the steered region at a 3x3 block (9 tokens) so the smallest
+    // spotlight still covers a meaningful neighbourhood (also covers the case
+    // where a small circle near a strip edge would otherwise clip to a sliver).
+    if (boost.length < 9) {
+      const w = state.grid.w, h = state.grid.h;
+      const col = Math.min(w - 1, Math.max(0, Math.round(ix / W * w - 0.5)));
+      const row = Math.min(h - 1, Math.max(0, Math.round(iy / H * h - 0.5)));
+      const c0 = Math.min(Math.max(col - 1, 0), Math.max(0, w - 3));
+      const r0 = Math.min(Math.max(row - 1, 0), Math.max(0, h - 3));
+      boost = [];
+      for (let rr = r0; rr < r0 + 3 && rr < h; rr++)
+        for (let cc = c0; cc < c0 + 3 && cc < w; cc++) boost.push(state.imgStart + rr * w + cc);
+    }
     // tint colour: whichever panel the spotlight centre sits over
     const b = state.meta.panel_boundaries_px;
     let p = -1;
     for (let i = 0; i < b.length - 1; i++) if (ix >= b[i] && ix < b[i + 1]) { p = i; break; }
     state.currentPanel = p;
-    if (!boost.length) { state.gaze.clear(); $('gd-badge').textContent = 'spotlight too small'; return; }
     const boostSet = new Set(boost);
     state.gaze.setTarget({ boost, suppress: [...state.allImage].filter((pos) => !boostSet.has(pos)) });
-    $('gd-badge').textContent = `steering ${boost.length} image tokens`;
+    $('gd-badge').textContent = `steering ${boost.length} image token${boost.length > 1 ? 's' : ''}`;
   }
 
   $('gd-strip-wrap').addEventListener('mousemove', (e) => {
@@ -488,7 +499,7 @@ export async function start(container, opts = {}) {
   $('gd-strip-wrap').addEventListener('wheel', (e) => {
     if (!state.meta) return;
     e.preventDefault();
-    state.radiusPx = Math.max(30, Math.min(170, state.radiusPx + (e.deltaY < 0 ? 9 : -9)));
+    state.radiusPx = Math.max(40, Math.min(170, state.radiusPx + (e.deltaY < 0 ? 9 : -9)));
     if (state.hovering) { renderSpot(); applyTarget(); }
   }, { passive: false });
   $('gd-strip-wrap').addEventListener('mouseleave', () => {

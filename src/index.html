@@ -182,7 +182,7 @@ this lever, and we find the same mechanism across model sizes and architectures.
     btn.textContent = 'Starting\u2026';
     try {
       // Bump ?v= on demo.js changes so returning visitors never get a stale module.
-      var mod = await import('./demo/demo.js?v=25');
+      var mod = await import('./demo/demo.js?v=28');
       btn.style.display = 'none';
       await mod.start(document.getElementById('gazedemo-body'));
     } catch (e) {
